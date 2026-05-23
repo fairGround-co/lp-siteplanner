@@ -17,6 +17,13 @@ export interface Vector2D {
   dy: number;
 }
 
+export interface DisplayStyle {
+  fillColor: string;
+  strokeColor: string;
+  pattern?: 'solid' | 'hatch_diagonal' | 'dots' | 'crosshatch';
+  opacity?: number;
+}
+
 // ------------------------------------------------------------------
 // 1. ROUTES (The Circulation Library)
 // ------------------------------------------------------------------
@@ -30,6 +37,7 @@ export interface RouteElement {
   minWidth: number;
   maxWidth: number;
   parkingAngle?: number; // e.g., 0, 45, 90
+  displayStyle?: DisplayStyle;
 }
 
 export interface RouteCrossSection {
@@ -79,6 +87,7 @@ export interface LotClass {
   minBuildableDepth: number;
   splitPreference: 'always_split' | 'never_split' | 'split_if_possible';
   setbacks: SetbackRules;
+  displayStyle: DisplayStyle;
 }
 
 // ------------------------------------------------------------------
