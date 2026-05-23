@@ -13,8 +13,8 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
   const blockGroups = usePlannerStore((state) => state.blockGroups);
   const updateAnchorPosition = usePlannerStore((state) => state.updateAnchorPosition);
   
-  // We'll also eventually render evaluated lots here
-  // const evaluatedLots = usePlannerStore((state) => state.evaluatedLots);
+  // Render the subdivided lots
+  const lots = usePlannerStore((state) => state.lots);
 
   const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>, anchorId: string) => {
     // Synchronous update for 60fps mesh warping
@@ -39,6 +39,24 @@ export function MapCanvas({ width, height }: MapCanvasProps) {
               fill="rgba(50, 150, 255, 0.1)"
               stroke="rgba(50, 150, 255, 0.5)"
               strokeWidth={2}
+            />
+          );
+        })}
+
+        {/* Draw Subdivided Lots */}
+        {Object.values(lots).map((lot) => {
+          if (!lot.geometry || !lot.geometry.vertices) return null;
+          
+          const points = lot.geometry.vertices.flatMap((v: Point) => [v.x, v.y]);
+          
+          return (
+            <Line
+              key={lot.id}
+              points={points}
+              closed
+              fill="rgba(100, 255, 100, 0.2)"
+              stroke="rgba(100, 255, 100, 0.8)"
+              strokeWidth={1}
             />
           );
         })}
