@@ -13,8 +13,8 @@ SitePlanner is a drawing tool for urban neighborhood layouts. It is loosely grid
 
 ## Architecture
 - **Tech Stack**: Vite + React + TypeScript
-- **Styling**: Vanilla CSS
-- **State Management**: Zustand
+- **Styling & Components**: Claude Design template / shared component library from `LotPlanner` to establish a common design language.
+- **State Management**: Zustand, explicitly designed with modularity for future M365 storage synchronization (similar to LotPlanner).
 - **Rendering Layer**: HTML5 Canvas / SVG (via React Konva or similar)
 
 ## Core Challenges
