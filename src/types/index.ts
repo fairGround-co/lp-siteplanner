@@ -1,6 +1,10 @@
 export interface SystemConfig {
+  theme?: 'light' | 'dark' | 'system';
+  storageMode?: 'local' | 'indexedDB' | 'file';
   baseGridSize: number; // Represents an absolute real-world unit (e.g., feet)
   snapToGrid: boolean;
+  parkingStallLength?: number;
+  parkingStallWidth?: number;
 }
 
 export interface Point {
@@ -37,6 +41,7 @@ export interface RouteElement {
   minWidth: number;
   maxWidth: number;
   parkingAngle?: number; // e.g., 0, 45, 90
+  direction?: 'right' | 'left' | 'yield'; // For drive lanes
   displayStyle?: DisplayStyle;
 }
 
@@ -78,7 +83,7 @@ export interface LotClass {
   id: string;
   name: string;
   use: 'residential' | 'commercial' | 'green_space' | 'civic';
-  targetWidths: number[]; // Absolute map units (e.g., 24, 36, 48)
+  targetWidth: number; // Absolute map units (e.g., 24)
   minWidth: number;
   maxWidth: number;
   minDepth: number;
@@ -124,6 +129,34 @@ export interface BlockBreakRule {
   maxEdgeLength: number;
   breakRouteClassId: string; // e.g., spawn an 'alley'
   breakPlacement: 'even' | 'max_from_start' | 'max_from_end';
+}
+
+export interface TemplateRouteNode {
+  id: string;
+  position: Point; // Local/orthogonal grid coordinates
+}
+
+export interface TemplateRouteSegment {
+  id: string;
+  routeClassId: string;
+  startNodeId: string;
+  endNodeId: string;
+}
+
+export interface TemplateLotGroup {
+  id: string;
+  boundarySegmentIds: string[];
+  subdivisionLogic: LotGroupSubdivisionLogic;
+}
+
+export interface BlockGroupTemplate {
+  id: string;
+  name: string;
+  anchorNodeIds: [string, string, string, string]; // References to 4 TemplateRouteNode IDs representing the corners
+  nodes: TemplateRouteNode[];
+  segments: TemplateRouteSegment[];
+  lotGroups: TemplateLotGroup[];
+  breakRules: BlockBreakRule[];
 }
 
 // ------------------------------------------------------------------

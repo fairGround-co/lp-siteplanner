@@ -28,6 +28,9 @@ During the design of the core data model, it became apparent that an idealized O
 7. **Visual Styling as Data**
    - *Decision*: Because this is a configuration tool, visual styling (colors, patterns) must be customizable. Added `DisplayStyle` directly to `LotClass` and `RouteClass`.
 
+8. **Lot Typology Purity (Singular Target Widths)**
+   - *Decision*: A single `LotClass` defines exactly one target width (`targetWidth: number`), bounded by `minWidth` and `maxWidth`. We discarded the array of `targetWidths: number[]`. If the Geometry Engine needs to mix-and-match lot sizes to seamlessly fill a gap without fractional stretching, it must do so by pulling from the *variety of distinct Lot Classes* assigned to the parent `LotGroup`, rather than multiplexing a single Lot Class.
+
 ## Downstream Impact
 - The `geometry-engine` has a heavier mathematical burden. It must calculate absolute real-world edge lengths of warped polygons before subdivision, and must handle complex polygon clipping for angled lots.
 - The `ui-framework` and `ui-config` must rely on atomic Zustand actions (e.g., `updateAnchorPosition`) to prevent race conditions during real-time dragging.

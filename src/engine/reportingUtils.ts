@@ -1,4 +1,4 @@
-import { Polygon } from '../types';
+import type { Polygon } from '../types';
 import { calculatePolygonArea, calculateEdgeLengths, distance } from './mathUtils';
 
 export interface PostDistortionMetrics {

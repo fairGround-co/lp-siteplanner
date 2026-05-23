@@ -1,4 +1,4 @@
-import { Point, Polygon, LotGroupInstance, LotSequenceItem } from '../types';
+import type { Point, Polygon, LotGroupInstance, LotSequenceItem } from '../types';
 import { distance, clipPolygon } from './mathUtils';
 
 function interpolatePoint(p1: Point, p2: Point, t: number): Point {
@@ -44,7 +44,7 @@ function calculateLotCount(edgeLength: number, sequence: LotSequenceItem[], minW
   }
   
   // Fill strategy
-  const targetWidth = 24; // In reality, fetch from LotClass targetWidths[0]
+  const targetWidth = 24; // In reality, fetch from LotClass targetWidth
   let count = Math.floor(edgeLength / targetWidth);
   if (count === 0) count = 1;
   

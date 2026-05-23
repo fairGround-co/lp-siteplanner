@@ -1,4 +1,4 @@
-import { Point, Polygon } from '../types';
+import type { Point, Polygon, Vector2D } from '../types';
 import * as d3 from 'd3-polygon';
 import polygonClipping from 'polygon-clipping';
 

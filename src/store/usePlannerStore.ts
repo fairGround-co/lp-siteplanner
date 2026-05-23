@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { activeStorageAdapter } from './storageAdapter';
 import { rotatePoint } from '../engine/mathUtils';
 import { evaluateBlockGroupGeometry } from '../engine/warpingEngine';
 import type {
@@ -15,6 +17,8 @@ import type {
   BlockGroupInstance,
   FreeformLotGroupInstance,
   FreeformRouteSegmentInstance,
+  BlockGroupTemplate,
+  Polygon,
   Point
 } from '../types';
 
@@ -24,7 +28,22 @@ interface PlannerState {
   // --- TEMPLATE LIBRARY ---
   routeClasses: Record<string, RouteClass>;
   lotClasses: Record<string, LotClass>;
+  blockGroupTemplates: Record<string, BlockGroupTemplate>;
   
+  // --- CONFIG ACTIONS ---
+  updateConfig: (partialConfig: Partial<SystemConfig>) => void;
+  addLotClass: (lotClass: LotClass) => void;
+  updateLotClass: (id: string, updates: Partial<LotClass>) => void;
+  deleteLotClass: (id: string) => void;
+  addRouteClass: (routeClass: RouteClass) => void;
+  updateRouteClass: (id: string, updates: Partial<RouteClass>) => void;
+  deleteRouteClass: (id: string) => void;
+  addBlockGroupTemplate: (template: BlockGroupTemplate) => void;
+  updateBlockGroupTemplate: (id: string, updates: Partial<BlockGroupTemplate>) => void;
+  deleteBlockGroupTemplate: (id: string) => void;
+  exportConfig: () => string;
+  importConfig: (json: string) => void;
+
   // --- THE CONTINUOUS MESH (Top-Level) ---
   anchors: Record<string, AnchorNodeInstance>; 
 
@@ -54,14 +73,20 @@ interface PlannerState {
 }
 
 export const usePlannerStore = create<PlannerState>()(
-  immer((set) => ({
+  persist(
+    immer((set, get) => ({
     config: {
+      theme: 'system',
+      storageMode: 'local',
       baseGridSize: 12,
       snapToGrid: true,
+      parkingStallLength: 18,
+      parkingStallWidth: 7,
     },
 
     routeClasses: {},
     lotClasses: {},
+    blockGroupTemplates: {},
 
     anchors: {},
     nodes: {},
@@ -73,6 +98,65 @@ export const usePlannerStore = create<PlannerState>()(
 
     freeformLotGroups: {},
     freeformSegments: {},
+
+    // --- CONFIG ACTIONS ---
+    updateConfig: (partialConfig) => set((state) => {
+      state.config = { ...state.config, ...partialConfig };
+    }),
+    addLotClass: (lotClass) => set((state) => {
+      state.lotClasses[lotClass.id] = lotClass;
+    }),
+    updateLotClass: (id, updates) => set((state) => {
+      if (state.lotClasses[id]) {
+        Object.assign(state.lotClasses[id], updates);
+      }
+    }),
+    deleteLotClass: (id) => set((state) => {
+      delete state.lotClasses[id];
+    }),
+    addRouteClass: (routeClass) => set((state) => {
+      state.routeClasses[routeClass.id] = routeClass;
+    }),
+    updateRouteClass: (id, updates) => set((state) => {
+      if (state.routeClasses[id]) {
+        Object.assign(state.routeClasses[id], updates);
+      }
+    }),
+    deleteRouteClass: (id) => set((state) => {
+      delete state.routeClasses[id];
+    }),
+    addBlockGroupTemplate: (template) => set((state) => {
+      state.blockGroupTemplates[template.id] = template;
+    }),
+    updateBlockGroupTemplate: (id, updates) => set((state) => {
+      if (state.blockGroupTemplates[id]) {
+        Object.assign(state.blockGroupTemplates[id], updates);
+      }
+    }),
+    deleteBlockGroupTemplate: (id) => set((state) => {
+      delete state.blockGroupTemplates[id];
+    }),
+    exportConfig: () => {
+      const state = get();
+      const exportData = {
+        config: state.config,
+        routeClasses: state.routeClasses,
+        lotClasses: state.lotClasses,
+        blockGroupTemplates: state.blockGroupTemplates
+      };
+      return JSON.stringify(exportData, null, 2);
+    },
+    importConfig: (json) => set((state) => {
+      try {
+        const data = JSON.parse(json);
+        if (data.config) state.config = data.config;
+        if (data.routeClasses) state.routeClasses = data.routeClasses;
+        if (data.lotClasses) state.lotClasses = data.lotClasses;
+        if (data.blockGroupTemplates) state.blockGroupTemplates = data.blockGroupTemplates;
+      } catch (e) {
+        console.error("Failed to import config", e);
+      }
+    }),
 
     // Atomic Actions (Implementations to be fleshed out by geometry-engine and ui-framework)
     updateAnchorPosition: (anchorId, position) => set((state) => {
@@ -209,5 +293,9 @@ export const usePlannerStore = create<PlannerState>()(
       };
     })
 
-  }))
-);
+  })),
+  {
+    name: 'siteplanner-storage',
+    storage: createJSONStorage(() => activeStorageAdapter),
+  }
+));

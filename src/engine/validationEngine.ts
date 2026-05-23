@@ -1,4 +1,4 @@
-import { LotInstance, LotClass, BlockGroupInstance, ConstraintViolation } from '../types';
+import type { LotInstance, LotClass, BlockGroupInstance, ConstraintViolation } from '../types';
 import { calculatePolygonArea, calculateEdgeLengths } from './mathUtils';
 
 /**
