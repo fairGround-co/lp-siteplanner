@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "d3-polygon": "^3.0.1",
     "immer": "^11.1.8",
     "konva": "^10.3.0",
+    "polygon-clipping": "^0.15.7",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-konva": "^19.2.4",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/d3-polygon": "^3.0.2",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { rotatePoint } from '../engine/mathUtils';
+import { evaluateBlockGroupGeometry } from '../engine/warpingEngine';
 import type {
   SystemConfig,
   RouteClass,
@@ -42,6 +44,7 @@ interface PlannerState {
   updateAnchorPosition: (anchorId: string, position: Point) => void;
   rotateAnchors: (anchorIds: string[], origin: Point, angleDegrees: number) => void;
   unweldAnchor: (sharedAnchorId: string, blockGroupIdToDetach: string) => void;
+  weldAnchors: (targetAnchorId: string, sourceAnchorId: string) => void;
   overrideLotFrontage: (lotId: string, targetSegmentId: string) => void;
   
   // Builders for Freeform entities
@@ -74,19 +77,71 @@ export const usePlannerStore = create<PlannerState>()(
     updateAnchorPosition: (anchorId, position) => set((state) => {
       if (state.anchors[anchorId]) {
         state.anchors[anchorId].position = position;
-        // The Geometry Engine will hook into this mutation (or listen to it) 
-        // to cascade updates to internal nodes and lot geometry.
+        
+        // SYNCHRONOUS MESH CASCADE (Topology/Routes only)
+        // Find all BlockGroups that share this anchor
+        for (const bgId in state.blockGroups) {
+          const bg = state.blockGroups[bgId];
+          if (bg.anchorNodeIds.includes(anchorId)) {
+            bg.geometry = evaluateBlockGroupGeometry(bg, state.anchors);
+          }
+        }
       }
     }),
 
     rotateAnchors: (anchorIds, origin, angleDegrees) => set((state) => {
-      // Will apply a mathematical rotation matrix to all specified anchors
-      // For now, this is a placeholder action to be built by the geometry-engine.
+      // Apply mathematical rotation matrix to all specified anchors
+      for (const id of anchorIds) {
+        const anchor = state.anchors[id];
+        if (anchor) {
+          anchor.position = rotatePoint(anchor.position, origin, angleDegrees);
+        }
+      }
+      
+      // Cascade to block groups
+      for (const bgId in state.blockGroups) {
+        const bg = state.blockGroups[bgId];
+        if (bg.anchorNodeIds.some(id => anchorIds.includes(id))) {
+          bg.geometry = evaluateBlockGroupGeometry(bg, state.anchors);
+        }
+      }
     }),
 
     unweldAnchor: (sharedAnchorId, blockGroupIdToDetach) => set((state) => {
-      // Clones the shared anchor, creating a new anchor ID, and updates
-      // the specific blockGroupIdToDetach to point to the new anchor ID.
+      const originalAnchor = state.anchors[sharedAnchorId];
+      const blockGroup = state.blockGroups[blockGroupIdToDetach];
+      
+      if (!originalAnchor || !blockGroup) return;
+      
+      const anchorIndex = blockGroup.anchorNodeIds.indexOf(sharedAnchorId);
+      if (anchorIndex === -1) return;
+      
+      // Clones the shared anchor, creating a new anchor ID
+      const newAnchorId = `anchor-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      state.anchors[newAnchorId] = {
+        id: newAnchorId,
+        position: { ...originalAnchor.position }
+      };
+      
+      // Update the specific blockGroupIdToDetach to point to the new anchor ID.
+      blockGroup.anchorNodeIds[anchorIndex] = newAnchorId;
+    }),
+
+    weldAnchors: (targetAnchorId, sourceAnchorId) => set((state) => {
+      if (!state.anchors[targetAnchorId] || !state.anchors[sourceAnchorId]) return;
+      
+      // Find all block groups using the sourceAnchorId
+      for (const bgId in state.blockGroups) {
+        const bg = state.blockGroups[bgId];
+        const index = bg.anchorNodeIds.indexOf(sourceAnchorId);
+        if (index !== -1) {
+          bg.anchorNodeIds[index] = targetAnchorId;
+          bg.geometry = evaluateBlockGroupGeometry(bg, state.anchors);
+        }
+      }
+      
+      // Delete the source anchor
+      delete state.anchors[sourceAnchorId];
     }),
 
     overrideLotFrontage: (lotId, targetSegmentId) => set((state) => {
