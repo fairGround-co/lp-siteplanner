@@ -42,7 +42,6 @@ export interface RouteElement {
   maxWidth: number;
   parkingAngle?: number; // e.g., 0, 45, 90
   direction?: 'right' | 'left' | 'yield'; // For drive lanes
-  displayStyle?: DisplayStyle;
 }
 
 export interface RouteCrossSection {
@@ -63,7 +62,6 @@ export interface RouteClass {
 
 export interface SetbackDistance {
   default: number;
-  adjacentToLot: number;
   perRouteClass: Record<string, number>; // Overrides default if adjacent to a specific route class
 }
 

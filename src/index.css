@@ -125,3 +125,31 @@ code {
   padding: 4px 8px;
   background: var(--btn-bg);
 }
+
+/* Contextual Lane Dividers */
+.lane-layout-row > div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+.lane-layout-col > div + div {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Double yellow for opposing adjacent drive lanes */
+.lane-layout-row > [data-type="drive_lane"][data-direction="left"] + [data-type="drive_lane"][data-direction="right"],
+.lane-layout-row > [data-type="drive_lane"][data-direction="right"] + [data-type="drive_lane"][data-direction="left"] {
+  border-left: 3px double #eab308;
+}
+.lane-layout-col > [data-type="drive_lane"][data-direction="left"] + [data-type="drive_lane"][data-direction="right"],
+.lane-layout-col > [data-type="drive_lane"][data-direction="right"] + [data-type="drive_lane"][data-direction="left"] {
+  border-top: 3px double #eab308;
+}
+
+/* Dashed white for same-direction adjacent drive lanes */
+.lane-layout-row > [data-type="drive_lane"][data-direction="left"] + [data-type="drive_lane"][data-direction="left"],
+.lane-layout-row > [data-type="drive_lane"][data-direction="right"] + [data-type="drive_lane"][data-direction="right"] {
+  border-left: 2px dashed rgba(255, 255, 255, 0.5);
+}
+.lane-layout-col > [data-type="drive_lane"][data-direction="left"] + [data-type="drive_lane"][data-direction="left"],
+.lane-layout-col > [data-type="drive_lane"][data-direction="right"] + [data-type="drive_lane"][data-direction="right"] {
+  border-top: 2px dashed rgba(255, 255, 255, 0.5);
+}

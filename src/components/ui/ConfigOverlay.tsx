@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePlannerStore } from '../../store/usePlannerStore';
 import { X, Download, Upload, ChevronLeft } from 'lucide-react';
 import { SystemSettingsCard, LotLibraryCard, RouteLibraryCard, TemplateLibraryCard } from './LibraryCards';
+import { ErrorBoundary } from './ErrorBoundary';
 import { LotClassEditor } from './editors/LotClassEditor';
 import { RouteClassEditor } from './editors/RouteClassEditor';
 import { BlockGroupTemplateEditor } from './editors/BlockGroupTemplateEditor';
@@ -118,9 +119,11 @@ export function ConfigOverlay({ onClose }: { onClose: () => void }) {
         </div>
       ) : (
         <div className="drill-down-editor" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {activeEditor.type === 'route' && <RouteClassEditor id={activeEditor.id} />}
-          {activeEditor.type === 'lot' && <LotClassEditor id={activeEditor.id} />}
-          {activeEditor.type === 'template' && <BlockGroupTemplateEditor id={activeEditor.id} />}
+          <ErrorBoundary name={activeEditor.type + " Editor"}>
+            {activeEditor.type === 'route' && <RouteClassEditor id={activeEditor.id} />}
+            {activeEditor.type === 'lot' && <LotClassEditor id={activeEditor.id} />}
+            {activeEditor.type === 'template' && <BlockGroupTemplateEditor id={activeEditor.id} />}
+          </ErrorBoundary>
         </div>
       )}
 

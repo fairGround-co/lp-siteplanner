@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { RouteClass, RouteElement, RouteElementType } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
+import { ColorSwatchPicker } from '../ColorSwatchPicker';
+import { getLaneColor, getParkingStripeBackground } from '../styleUtils';
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 
 export function RouteClassEditor({ id }: { id?: string }) {
@@ -156,17 +158,16 @@ export function RouteClassEditor({ id }: { id?: string }) {
     const config = store.config;
     const gridFt = config?.baseGridSize || 10;
     
-    // Determine a visual scale. Let's make one grid cell = 40px on screen.
     const pxPerGrid = 40;
     const pxPerFt = pxPerGrid / gridFt;
+    const px = (ft: number) => ft * pxPerFt;
     
     const totalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
     const pxTotal = totalWidth * pxPerFt;
     
-    // A helper to render the cross-section
     const renderCrossSection = (isHorizontal: boolean) => {
       return (
-        <div style={{ 
+        <div className={`lane-layout-${isHorizontal ? 'col' : 'row'}`} style={{ 
           display: 'flex', 
           flexDirection: isHorizontal ? 'column' : 'row',
           width: isHorizontal ? '100%' : pxTotal,
@@ -175,58 +176,15 @@ export function RouteClassEditor({ id }: { id?: string }) {
         }}>
            {route.crossSection.elements.map((el, i) => {
              const isHovered = hoveredIndex === i;
-             const bgColor = el.type === 'sidewalk' ? '#555' : el.type === 'parking_lane' ? '#333' : el.type === 'drive_lane' ? '#222' : '#4ade80';
-             const borderStyle = i < route.crossSection.elements.length - 1 ? '2px dashed rgba(255,255,255,0.2)' : 'none';
+             const bgColor = getLaneColor(el.type);
              
              let bgImage = 'none';
              if (el.type === 'parking_lane') {
                const pLength = store.config.parkingStallLength || 18;
                const pWidth = store.config.parkingStallWidth || 7;
-               const angle = el.parkingAngle || 0;
-               
-               // Find nearest adjacent drive lane to determine flow
-               let adjacentDirection: 'right' | 'left' | 'yield' = 'right';
-               let leftDriveDist = Infinity;
-               let rightDriveDist = Infinity;
-               let leftDir: 'right' | 'left' | 'yield' | null = null;
-               let rightDir: 'right' | 'left' | 'yield' | null = null;
-               
-               for (let j = i - 1; j >= 0; j--) {
-                 if (route.crossSection.elements[j].type === 'drive_lane') {
-                   leftDriveDist = i - j;
-                   leftDir = route.crossSection.elements[j].direction || 'right';
-                   break;
-                 }
-               }
-               for (let j = i + 1; j < route.crossSection.elements.length; j++) {
-                 if (route.crossSection.elements[j].type === 'drive_lane') {
-                   rightDriveDist = j - i;
-                   rightDir = route.crossSection.elements[j].direction || 'right';
-                   break;
-                 }
-               }
-               if (leftDriveDist < rightDriveDist) adjacentDirection = leftDir || 'right';
-               else if (rightDriveDist < leftDriveDist) adjacentDirection = rightDir || 'right';
-               else if (leftDir) adjacentDirection = leftDir;
-
-               const flowDir = adjacentDirection === 'yield' ? 'right' : adjacentDirection;
-               let carAngle = 0;
-               
-               if (!isHorizontal) {
-                 carAngle = flowDir === 'right' ? angle : 180 + angle;
-               } else {
-                 carAngle = flowDir === 'right' ? 90 + angle : 270 + angle;
-               }
-               
-               const lineAngle = angle === 0 ? carAngle + 90 : carAngle;
-               const gradAngle = lineAngle - 90;
-               const spacingFt = angle === 0 ? pLength : pWidth;
-               
-               const spacingPx = spacingFt * pxPerFt;
-               bgImage = `repeating-linear-gradient(${gradAngle}deg, transparent, transparent calc(${spacingPx}px - 2px), rgba(234, 179, 8, 0.5) calc(${spacingPx}px - 2px), rgba(234, 179, 8, 0.5) ${spacingPx}px)`;
+               bgImage = getParkingStripeBackground(i, route.crossSection.elements, !isHorizontal, pLength, pWidth, pxPerFt);
              }
 
-             // Direction arrows for drive lanes
              let arrow = null;
              if (el.type === 'drive_lane') {
                const dir = el.direction || 'right';
@@ -247,21 +205,19 @@ export function RouteClassEditor({ id }: { id?: string }) {
                  onClick={() => scrollToLane(i)}
                  onMouseEnter={() => setHoveredIndex(i)}
                  onMouseLeave={() => setHoveredIndex(null)}
+                 data-type={el.type}
+                 data-direction={el.direction || 'right'}
                  style={{
-                 flex: el.targetWidth,
-                 minWidth: 0,
-                 minHeight: 0,
-                 overflow: 'hidden',
-                 backgroundColor: bgColor,
-                 backgroundImage: bgImage,
-                 borderRight: !isHorizontal ? borderStyle : 'none',
-                 borderBottom: isHorizontal ? borderStyle : 'none',
-                 display: 'flex', flexDirection: isHorizontal ? 'row' : 'column', alignItems: 'center', justifyContent: 'center',
-                 boxShadow: isHovered ? 'inset 0 0 0 2px #4ade80' : 'none',
-                 transition: 'all 0.2s ease',
-                 position: 'relative',
-                 cursor: 'pointer'
-               }}>
+                   flex: `1 1 ${px(el.targetWidth)}px`,
+                   backgroundColor: el.displayStyle?.fillColor || bgColor,
+                   backgroundImage: bgImage,
+                   boxSizing: 'border-box',
+                   display: 'flex', flexDirection: isHorizontal ? 'row' : 'column', alignItems: 'center', justifyContent: 'center',
+                   cursor: 'grab',
+                   opacity: draggedIndex === i ? 0.5 : 1,
+                   transition: 'all 0.2s ease',
+                   position: 'relative'
+                 }}>
                   {!isHorizontal && (
                     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none'}}>
                       {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
@@ -415,15 +371,15 @@ export function RouteClassEditor({ id }: { id?: string }) {
                 <>
                   <div className="inspector-field" style={{flex: 1}}>
                     <label>Width</label>
-                    <input type="number" value={el.targetWidth} onChange={e => updateElement(i, { targetWidth: Number(e.target.value) })} style={{padding: '4px'}} />
+                    <input type="number" value={el.targetWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateElement(i, { targetWidth: Number(e.target.value) })} style={{padding: '4px'}} />
                   </div>
                   <div className="inspector-field" style={{flex: 1}}>
                     <label>Min</label>
-                    <input type="number" value={el.minWidth} onChange={e => updateElement(i, { minWidth: Number(e.target.value) })} style={{padding: '4px'}} />
+                    <input type="number" value={el.minWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateElement(i, { minWidth: Number(e.target.value) })} style={{padding: '4px'}} />
                   </div>
                   <div className="inspector-field" style={{flex: 1}}>
                     <label>Max</label>
-                    <input type="number" value={el.maxWidth} onChange={e => updateElement(i, { maxWidth: Number(e.target.value) })} style={{padding: '4px'}} />
+                    <input type="number" value={el.maxWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateElement(i, { maxWidth: Number(e.target.value) })} style={{padding: '4px'}} />
                   </div>
                 </>
               )}
@@ -452,3 +408,4 @@ export function RouteClassEditor({ id }: { id?: string }) {
       />
     );
 }
+
