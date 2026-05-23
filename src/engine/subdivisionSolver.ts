@@ -9,6 +9,28 @@ function interpolatePoint(p1: Point, p2: Point, t: number): Point {
 }
 
 /**
+ * Extracts the semantic edges (frontage and back) from a Lot Group geometry.
+ * Currently uses a naive heuristic (assuming a 4-vertex quad where edge 0-1 is frontage).
+ * In the future, this will use topological routing data to determine the true frontage.
+ */
+export function extractLotGroupEdges(
+  lotGroupGeom: Polygon,
+  _lotGroupId?: string
+): { frontageEdge: [Point, Point]; backEdge: [Point, Point] } {
+  if (!lotGroupGeom || lotGroupGeom.vertices.length < 4) {
+    throw new Error('Lot Group geometry must have at least 4 vertices to extract edges.');
+  }
+  
+  // MVP heuristic: 
+  // Frontage is the segment between vertex 0 and 1.
+  // Back is the segment between vertex 3 and 2 (reversed direction to match frontage flow).
+  return {
+    frontageEdge: [lotGroupGeom.vertices[0], lotGroupGeom.vertices[1]],
+    backEdge: [lotGroupGeom.vertices[3], lotGroupGeom.vertices[2]]
+  };
+}
+
+/**
  * Calculates the number of lots that should fit along an edge.
  * Represents the "Renormalization" logic where we add a new lot if the 
  * warped geometry stretches enough.
