@@ -46,6 +46,7 @@ interface PlannerState {
   unweldAnchor: (sharedAnchorId: string, blockGroupIdToDetach: string) => void;
   weldAnchors: (targetAnchorId: string, sourceAnchorId: string) => void;
   overrideLotFrontage: (lotId: string, targetSegmentId: string) => void;
+  setEvaluatedLots: (lotGroupId: string, lots: Polygon[], overage: Polygon[]) => void;
   
   // Builders for Freeform entities
   createFreeformSegment: (routeClassId: string, startNodeId: string, endNodeId: string) => void;
@@ -142,6 +143,47 @@ export const usePlannerStore = create<PlannerState>()(
       
       // Delete the source anchor
       delete state.anchors[sourceAnchorId];
+    }),
+
+    setEvaluatedLots: (lotGroupId, lots, overage) => set((state) => {
+      const group = state.lotGroups[lotGroupId];
+      if (!group) return;
+      
+      // 1. Clear out old lots
+      for (const oldLotId of group.lotIds) {
+        delete state.lots[oldLotId];
+      }
+      group.lotIds = [];
+      
+      // 2. Determine classes
+      const primaryLotClassId = group.subdivisionLogic.sequence[0]?.lotClassId || 'default-lot-class';
+      const overageLotClassId = group.subdivisionLogic.overageLotClassId || primaryLotClassId;
+      
+      // 3. Instantiate standard lots
+      lots.forEach((poly, index) => {
+        const lotId = `${lotGroupId}-lot-${Date.now()}-${index}`;
+        state.lots[lotId] = {
+          id: lotId,
+          lotGroupId,
+          lotClassId: primaryLotClassId,
+          geometry: poly,
+          frontageSegmentId: group.boundarySegmentIds[0] || '' // Fallback frontage
+        };
+        group.lotIds.push(lotId);
+      });
+      
+      // 4. Instantiate overage lots
+      overage.forEach((poly, index) => {
+        const lotId = `${lotGroupId}-overage-${Date.now()}-${index}`;
+        state.lots[lotId] = {
+          id: lotId,
+          lotGroupId,
+          lotClassId: overageLotClassId,
+          geometry: poly,
+          frontageSegmentId: group.boundarySegmentIds[0] || ''
+        };
+        group.lotIds.push(lotId);
+      });
     }),
 
     overrideLotFrontage: (lotId, targetSegmentId) => set((state) => {
