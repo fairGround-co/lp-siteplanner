@@ -202,13 +202,13 @@ export function LotClassEditor({ id }: { id?: string }) {
 
     const gridPx = px(gridIncrement);
     const scaleAlignedLeft = gridOffsetX + Math.ceil((40 - gridOffsetX) / gridPx) * gridPx;
-    const scaleAlignedTop = gridOffsetY + Math.floor((containerSize.h - 40 - gridOffsetY) / gridPx) * gridPx;
+    const scaleAlignedTop = gridOffsetY + Math.floor((containerSize.h - 10 - gridOffsetY) / gridPx) * gridPx;
 
     const evaluateSetbacks = (row: 0 | 1, col: number) => {
        const adjTop = row === 0 ? (previewRoutes.top || 'LOT') : 'LOT';
        const adjBottom = row === 1 ? (previewRoutes.bottom || 'LOT') : 'LOT';
        const adjLeft = col === 0 ? (previewRoutes.left || 'LOT') : 'LOT';
-       const adjRight = col === 4 ? (previewRoutes.right || 'LOT') : 'LOT';
+       const adjRight = col === sampleLotsCount - 1 ? (previewRoutes.right || 'LOT') : 'LOT';
 
        let availableRoutes: { edge: 'top'|'bottom'|'left'|'right', routeId: string }[] = [];
        if (adjTop !== 'LOT') availableRoutes.push({ edge: 'top', routeId: adjTop as string });
@@ -321,7 +321,7 @@ export function LotClassEditor({ id }: { id?: string }) {
     const renderLots = () => {
        const lots = [];
        for (let row = 0; row < 2; row++) {
-         for (let col = 0; col < 5; col++) {
+         for (let col = 0; col < sampleLotsCount; col++) {
            const sb = evaluateSetbacks(row as 0|1, col);
            const lTop = (row * depth);
            const lLeft = (col * width);
