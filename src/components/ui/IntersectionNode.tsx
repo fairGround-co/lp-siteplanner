@@ -376,7 +376,39 @@ export function IntersectionNode({
       let bgImage = 'none';
       if (type === 'crosswalk') {
         const isVertDrive = v_el.type === 'drive_lane';
-        bgImage = `repeating-linear-gradient(${isVertDrive ? '90deg' : '0deg'}, transparent, transparent 6px, rgba(255,255,255,0.3) 6px, rgba(255,255,255,0.3) 14px)`;
+        const isHorizDrive = h_el.type === 'drive_lane';
+        
+        let stopBarBackground = '';
+        const stopBarW = 6;
+        const stripeColor = 'rgba(255,255,255,0.7)';
+        const stopBarColor = 'rgba(255,255,255,0.9)';
+        
+        if (isVertDrive) {
+           const dir = v_el.direction || 'right'; // 'right' = UP, 'left' = DOWN
+           const isBottomCrosswalk = h_i > lastDriveIndexH;
+           const isTopCrosswalk = h_i < firstDriveIndexH;
+           
+           if ((dir === 'right' || dir === 'both') && isBottomCrosswalk) {
+              stopBarBackground += `linear-gradient(to top, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
+           }
+           if ((dir === 'left' || dir === 'both') && isTopCrosswalk) {
+              stopBarBackground += `linear-gradient(to bottom, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
+           }
+        } else if (isHorizDrive) {
+           const dir = h_el.direction || 'right'; // 'right' = RIGHT, 'left' = LEFT
+           const isRightCrosswalk = v_i > lastDriveIndexV;
+           const isLeftCrosswalk = v_i < firstDriveIndexV;
+           
+           if ((dir === 'right' || dir === 'both') && isLeftCrosswalk) {
+              stopBarBackground += `linear-gradient(to right, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
+           }
+           if ((dir === 'left' || dir === 'both') && isRightCrosswalk) {
+              stopBarBackground += `linear-gradient(to left, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
+           }
+        }
+        
+        const stripes = `repeating-linear-gradient(${isVertDrive ? '90deg' : '0deg'}, transparent, transparent 6px, ${stripeColor} 6px, ${stripeColor} 14px)`;
+        bgImage = `${stopBarBackground}${stripes}`;
       }
 
       let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
@@ -464,7 +496,8 @@ export function IntersectionNode({
   const stripeRadius = pedRadius;
   const curbColor = getLaneColor('sidewalk');
   const stripeW = 4; // stop line / stripe width in px
-  const stripeColor = 'rgba(255,255,255,0.4)';
+  const hatchStripeColor = 'rgba(255,255,255,0.3)';
+  const solidStripeColor = 'rgba(255,255,255,0.85)';
 
   const renderApron = (key: string, gridRow: number, gridCol: number, pos: string) => {
     const sr = px(stripeRadius);
@@ -478,57 +511,63 @@ export function IntersectionNode({
     if (pos === 'bottom-right') {
       maskCircleAt = '0% 0%';
       bRadius = `0 0 ${sr}px 0`;
-      bBottom = `${stripeW}px solid ${stripeColor}`;
-      bRight = `${stripeW}px solid ${stripeColor}`;
+      bBottom = `${stripeW}px solid ${solidStripeColor}`;
+      bRight = `${stripeW}px solid ${solidStripeColor}`;
       hatchAngle = 45;
     } else if (pos === 'bottom-left') {
       maskCircleAt = '100% 0%';
       bRadius = `0 0 0 ${sr}px`;
-      bBottom = `${stripeW}px solid ${stripeColor}`;
-      bLeft = `${stripeW}px solid ${stripeColor}`;
+      bBottom = `${stripeW}px solid ${solidStripeColor}`;
+      bLeft = `${stripeW}px solid ${solidStripeColor}`;
       hatchAngle = -45;
     } else if (pos === 'top-right') {
       maskCircleAt = '0% 100%';
       bRadius = `0 ${sr}px 0 0`;
-      bTop = `${stripeW}px solid ${stripeColor}`;
-      bRight = `${stripeW}px solid ${stripeColor}`;
+      bTop = `${stripeW}px solid ${solidStripeColor}`;
+      bRight = `${stripeW}px solid ${solidStripeColor}`;
       hatchAngle = -45;
     } else if (pos === 'top-left') {
       maskCircleAt = '100% 100%';
       bRadius = `${sr}px 0 0 0`;
-      bTop = `${stripeW}px solid ${stripeColor}`;
-      bLeft = `${stripeW}px solid ${stripeColor}`;
+      bTop = `${stripeW}px solid ${solidStripeColor}`;
+      bLeft = `${stripeW}px solid ${solidStripeColor}`;
       hatchAngle = 45;
     }
 
-    const hatch = `repeating-linear-gradient(${hatchAngle}deg, ${stripeColor}, ${stripeColor} ${stripeW}px, transparent ${stripeW}px, transparent 12px)`;
+    const hatch = `repeating-linear-gradient(${hatchAngle}deg, ${hatchStripeColor}, ${hatchStripeColor} ${stripeW}px, transparent ${stripeW}px, transparent 12px)`;
+    const curbThick = px(config.curbThickness ?? 0.5);
 
     return (
       <div key={key} style={{ gridRow, gridColumn: gridCol, position: 'relative', zIndex: 10 }}>
-        {/* Curb arc background */}
+        {/* Masked container for the apron area */}
         <div
           style={{
             position: 'absolute',
             ...(pos.includes('bottom') ? { bottom: 0 } : { top: 0 }),
             ...(pos.includes('right') ? { right: 0 } : { left: 0 }),
             width: `${br}px`, height: `${br}px`,
-            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + px(config.curbThickness ?? 0.5)}px, ${getLaneColor('parking_lane')} ${br + px(config.curbThickness ?? 0.5)}px)`,
             maskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br - 0.2}px, black ${br - 0.2}px)`,
             WebkitMaskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br - 0.2}px, black ${br - 0.2}px)`,
             pointerEvents: 'none',
           }}
         >
-          {/* Crosswalk stripes, tangent lines, and quarter-circle boundary */}
+          {/* 1. Background (drivelane color) */}
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: getLaneColor('drive_lane') }} />
+          
+          {/* 2. Striping (hatch) */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: hatch }} />
+          
+          {/* 3. Outer curve + tangents (borders without transparency) */}
           <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: hatch,
-            borderTop: bTop,
-            borderBottom: bBottom,
-            borderLeft: bLeft,
-            borderRight: bRight,
-            borderRadius: bRadius,
-            boxSizing: 'border-box'
+            position: 'absolute', inset: 0,
+            borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
+            borderRadius: bRadius, boxSizing: 'border-box'
+          }} />
+          
+          {/* 4. Inner curve (curb color) on top of everything */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + curbThick}px, transparent ${br + curbThick}px)`
           }} />
         </div>
       </div>
