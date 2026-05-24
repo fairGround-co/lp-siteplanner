@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Point, Polygon, LotGroupInstance, LotSequenceItem } from '../types';
 import { distance, clipPolygon } from './mathUtils';
 

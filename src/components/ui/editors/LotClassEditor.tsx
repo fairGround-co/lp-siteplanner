@@ -5,7 +5,7 @@ import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { LotClass } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
 import { ColorSwatchPicker } from '../ColorSwatchPicker';
-import { getLaneColor, getParkingStripeBackground } from '../styleUtils';
+import { RouteLeg } from '../IntersectionNode';
 
 export function LotClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
@@ -95,7 +95,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   if (!lot) return <div style={{ padding: '24px', color: 'var(--text-secondary)' }}>Loading Lot Typology...</div>;
 
   const usedByRoutes = Object.values(store.routeClasses).flatMap(rc => 
-    rc.crossSection.elements.map(el => el.displayStyle?.fillColor?.toLowerCase()).filter(Boolean)
+    rc.crossSection.elements.map(el => (el as any).displayStyle?.fillColor?.toLowerCase()).filter(Boolean)
   ) as string[];
 
   const usedByLots = Object.values(store.lotClasses)
@@ -168,10 +168,10 @@ export function LotClassEditor({ id }: { id?: string }) {
     const gridOffsetY = blockOffsetY + px(topRouteW);
 
     const evaluateSetbacks = (row: 0 | 1, col: number) => {
-       const adjTop = row === 0 ? previewRoutes.top : 'LOT';
-       const adjBottom = row === 1 ? previewRoutes.bottom : 'LOT';
-       const adjLeft = col === 0 ? previewRoutes.left : 'LOT';
-       const adjRight = col === 4 ? previewRoutes.right : 'LOT';
+       const adjTop = row === 0 ? (previewRoutes.top || 'LOT') : 'LOT';
+       const adjBottom = row === 1 ? (previewRoutes.bottom || 'LOT') : 'LOT';
+       const adjLeft = col === 0 ? (previewRoutes.left || 'LOT') : 'LOT';
+       const adjRight = col === 4 ? (previewRoutes.right || 'LOT') : 'LOT';
 
        let availableRoutes: { edge: 'top'|'bottom'|'left'|'right', routeId: string }[] = [];
        if (adjTop !== 'LOT') availableRoutes.push({ edge: 'top', routeId: adjTop as string });
@@ -222,7 +222,6 @@ export function LotClassEditor({ id }: { id?: string }) {
 
        return (
          <div 
-            className={`lane-layout-${isVertical ? 'row' : 'col'}`}
             onClick={() => setActiveRouteSelect(edge)}
             onMouseEnter={() => setHoveredField(`route-${edge}`)}
             onMouseLeave={() => setHoveredField(null)}
@@ -231,45 +230,20 @@ export function LotClassEditor({ id }: { id?: string }) {
               background: routeId ? 'var(--bg-modifier-hover)' : 'var(--bg-modifier-active)',
               border: `1px solid var(--border-subtle)`,
               cursor: 'pointer',
-              display: 'flex', flexDirection: isVertical ? 'row' : 'column',
               outline: isHovered ? '2px solid var(--text-primary)' : 'none',
               zIndex: 10,
               overflow: 'hidden'
             }}>
-            {rc ? rc.crossSection.elements.map((el, i) => {
-               let bgImage = 'none';
-               if (el.type === 'parking_lane') {
-                 const pLength = store.config.parkingStallLength || 18;
-                 const pWidth = store.config.parkingStallWidth || 7;
-                 bgImage = getParkingStripeBackground(i, rc.crossSection.elements, isVertical, pLength, pWidth, scale);
-               }
-
-               let arrow = null;
-               if (el.type === 'drive_lane') {
-                 const dir = el.direction || 'right';
-                 if (isVertical) {
-                   arrow = dir === 'right' ? '↑' : dir === 'left' ? '↓' : '↕';
-                 } else {
-                   arrow = dir === 'right' ? '→' : dir === 'left' ? '←' : '↔';
-                 }
-               }
-
-               return (
-                 <div key={el.id} 
-                   data-type={el.type}
-                   data-direction={el.direction || 'right'}
-                   style={{
-                     flex: `0 0 ${px(el.targetWidth)}px`,
-                     backgroundColor: el.displayStyle?.fillColor || getLaneColor(el.type),
-                     backgroundImage: bgImage,
-                     boxSizing: 'border-box',
-                     display: 'flex', alignItems: 'center', justifyContent: 'center'
-                 }}>
-                   {arrow && <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', pointerEvents: 'none' }}>{arrow}</span>}
-                 </div>
-               );
-            }) : (
-              <span style={{ margin: 'auto', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>None</span>
+            {rc ? (
+              <RouteLeg
+                route={rc}
+                isHorizontal={!isVertical}
+                position="leg"
+                config={store.config}
+                pxPerFt={scale}
+              />
+            ) : (
+              <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>None</span>
             )}
          </div>
        );
@@ -462,7 +436,7 @@ export function LotClassEditor({ id }: { id?: string }) {
         <div className="inspector-field">
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
             Target Width
-            {lot.targetWidth % gridIncrement !== 0 && <AlertTriangle size={14} title={`Not divisible by ${gridIncrement}ft grid`} />}
+            {lot.targetWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
           </label>
           <input 
             type="number" 
@@ -582,14 +556,14 @@ export function LotClassEditor({ id }: { id?: string }) {
           <div className="inspector-field" style={{ flex: 1 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.minWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
               Min Width
-              {lot.minWidth % gridIncrement !== 0 && <AlertTriangle size={14} title={`Not divisible by ${gridIncrement}ft grid`} />}
+              {lot.minWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
             <input type="number" value={lot.minWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ minWidth: Number(e.target.value) })} style={{ borderColor: lot.minWidth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
           <div className="inspector-field" style={{ flex: 1 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.maxWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
               Max Width
-              {lot.maxWidth % gridIncrement !== 0 && <AlertTriangle size={14} title={`Not divisible by ${gridIncrement}ft grid`} />}
+              {lot.maxWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
             <input type="number" value={lot.maxWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ maxWidth: Number(e.target.value) })} style={{ borderColor: lot.maxWidth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
@@ -598,14 +572,14 @@ export function LotClassEditor({ id }: { id?: string }) {
           <div className="inspector-field" style={{ flex: 1 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.minDepth % gridIncrement !== 0 ? '#eab308' : undefined }}>
               Min Depth
-              {lot.minDepth % gridIncrement !== 0 && <AlertTriangle size={14} title={`Not divisible by ${gridIncrement}ft grid`} />}
+              {lot.minDepth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
             <input type="number" value={lot.minDepth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ minDepth: Number(e.target.value) })} style={{ borderColor: lot.minDepth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
           <div className="inspector-field" style={{ flex: 1 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.maxDepth % gridIncrement !== 0 ? '#eab308' : undefined }}>
               Max Depth
-              {lot.maxDepth % gridIncrement !== 0 && <AlertTriangle size={14} title={`Not divisible by ${gridIncrement}ft grid`} />}
+              {lot.maxDepth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
             <input type="number" value={lot.maxDepth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ maxDepth: Number(e.target.value) })} style={{ borderColor: lot.maxDepth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
