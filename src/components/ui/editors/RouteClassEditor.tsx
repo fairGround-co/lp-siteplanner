@@ -174,8 +174,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
           height: '100%',
         }}>
            {route.crossSection.elements.map((el, i) => {
-             const isFarSide = isHorizontal && i > lastDriveIndexH;
-             const effectiveSectionType = isFarSide ? 'leg' : sectionType;
+             const effectiveSectionType = sectionType;
              
              const isHovered = hoveredIndex === i;
              const bgColor = getLaneColor(el.type);
@@ -230,6 +229,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
                : ((el as any).displayStyle?.fillColor || bgColor);
 
              let tl = 0, tr = 0, bl = 0, br = 0;
+             let pTl = false, pTr = false, pBl = false, pBr = false;
              const r = px(2);
 
              const isMedianH = isHorizontal && el.type === 'lawn_strip' && i > firstDriveIndexH && i < lastDriveIndexH;
@@ -239,16 +239,19 @@ export function RouteClassEditor({ id }: { id?: string }) {
              if (isPreemptedParking) {
                 if (isHorizontal) {
                    if (position === 'left') {
-                      tl = r; bl = r;
+                      pTl = true; pBl = true;
                       bLeft = curb;
                    } else if (position === 'right') {
-                      tr = r; br = r;
+                      pTr = true; pBr = true;
                       bRight = curb;
                    }
                 } else {
                    if (position === 'top') {
-                      tl = r; tr = r;
+                      pTl = true; pTr = true;
                       bTop = curb;
+                   } else if (position === 'bottom') {
+                      pBl = true; pBr = true;
+                      bBottom = curb;
                    }
                 }
              } else if (isMedian) {
@@ -278,12 +281,14 @@ export function RouteClassEditor({ id }: { id?: string }) {
              }
              
              let wrapperBg = renderBgColor;
-             if (isMedian || isPreemptedParking) wrapperBg = getLaneColor('drive_lane');
+             if (isMedian) wrapperBg = getLaneColor('drive_lane');
              
              let wrapperBgImage = bgImage;
-             if (isMedian || isPreemptedParking) wrapperBgImage = 'none';
+             if (isMedian) wrapperBgImage = 'none';
 
-             const hasInnerDiv = isMedian || isPreemptedParking;
+             const hasInnerDiv = isMedian;
+             const hasPavementHorns = pTl || pTr || pBl || pBr;
+             const pavementColor = getLaneColor('drive_lane');
 
              let arrow = null;
              if (el.type === 'drive_lane' && effectiveSectionType === 'leg') {
@@ -335,6 +340,14 @@ export function RouteClassEditor({ id }: { id?: string }) {
                         borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
                         boxSizing: 'border-box'
                      }} />
+                  )}
+                  {hasPavementHorns && (
+                     <>
+                        {pTl && <div style={{ position: 'absolute', top: 0, left: 0, width: r, height: r, backgroundColor: pavementColor, borderBottomRightRadius: r, borderBottom: curb, borderRight: curb, boxSizing: 'border-box', zIndex: 5 }} />}
+                        {pTr && <div style={{ position: 'absolute', top: 0, right: 0, width: r, height: r, backgroundColor: pavementColor, borderBottomLeftRadius: r, borderBottom: curb, borderLeft: curb, boxSizing: 'border-box', zIndex: 5 }} />}
+                        {pBl && <div style={{ position: 'absolute', bottom: 0, left: 0, width: r, height: r, backgroundColor: pavementColor, borderTopRightRadius: r, borderTop: curb, borderRight: curb, boxSizing: 'border-box', zIndex: 5 }} />}
+                        {pBr && <div style={{ position: 'absolute', bottom: 0, right: 0, width: r, height: r, backgroundColor: pavementColor, borderTopLeftRadius: r, borderTop: curb, borderLeft: curb, boxSizing: 'border-box', zIndex: 5 }} />}
+                     </>
                   )}
                   {!isHorizontal && sectionType === 'leg' && (
                     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none'}}>
