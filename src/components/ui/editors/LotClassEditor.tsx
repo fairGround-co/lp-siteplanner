@@ -422,18 +422,24 @@ export function LotClassEditor({ id }: { id?: string }) {
                 }}>
                   Lot Preview
                 </div>
-                <div style={{
-                  background: 'var(--bg-canvas)',
-                  border: '1px solid var(--border-strong)',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.8rem',
-                  fontFamily: 'monospace',
-                  boxShadow: 'var(--shadow)'
-                }}>
-                  1 grid square = 5'
-                </div>
+            </div>
+            
+            {/* Scale Reference Bar */}
+            <div style={{ position: 'absolute', bottom: '40px', left: '40px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+               <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
+                 1 Grid Cell = {gridIncrement}'
+               </span>
+               <div style={{ display: 'flex', border: '1px solid var(--text-primary)', borderTop: 'none', height: '8px', width: `${px(gridIncrement) * 4}px`, boxSizing: 'border-box' }}>
+                  <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
+                  <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
+                  <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
+                  <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
+               </div>
+               <div style={{ display: 'flex', width: `${px(gridIncrement) * 4}px`, justifyContent: 'space-between', color: 'var(--text-primary)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
+                  <span>0</span>
+                  <span>{gridIncrement * 2}'</span>
+                  <span>{gridIncrement * 4}'</span>
+               </div>
             </div>
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
                {/* Routes (Continuous segments between intersections) */}
