@@ -181,8 +181,37 @@ export function RouteClassEditor({ id }: { id?: string }) {
     
     const totalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
 
-    const isValid = totalWidth % (store.config?.baseGridSize || 12) === 0;
-    const statusColor = isValid ? 'var(--color-success)' : 'var(--color-warning)';
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (totalWidth % (store.config?.baseGridSize || 12) !== 0) {
+      warnings.push(`WARNING: Total width is not a multiple of the base grid size (${store.config?.baseGridSize || 12}')`);
+    }
+
+    route.crossSection.elements.forEach((el, i) => {
+      if (el.type === 'parking_lane') {
+        const hasPrevDrive = route.crossSection.elements[i - 1]?.type === 'drive_lane';
+        const hasNextDrive = route.crossSection.elements[i + 1]?.type === 'drive_lane';
+        const adjacentDrives = (hasPrevDrive ? 1 : 0) + (hasNextDrive ? 1 : 0);
+        if (adjacentDrives !== 1) {
+          errors.push(`ERROR: Parking lane at index ${i} must have EXACTLY ONE adjacent drive lane`);
+        }
+        
+        const nextEl = route.crossSection.elements[i + 1];
+        if (nextEl?.type === 'parking_lane') {
+          const angle1 = el.parkingAngle || 0;
+          const angle2 = nextEl.parkingAngle || 0;
+          if (angle1 > 0 && angle2 > 0) {
+            warnings.push(`WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.`);
+          }
+        }
+      }
+    });
+
+    let statusColor = 'var(--color-success)';
+    if (warnings.length > 0) statusColor = 'var(--color-warning)';
+    if (errors.length > 0) statusColor = 'var(--color-danger)';
+
     const w_px = route.crossSection.elements.reduce((acc, el) => acc + Math.round(el.targetWidth * pxPerFt), 0);
 
     let anchorX: number | undefined = undefined;
@@ -198,34 +227,19 @@ export function RouteClassEditor({ id }: { id?: string }) {
     return (
       <div ref={canvasRef} style={{ width: '100%', height: '100%', boxSizing: 'border-box', position: 'relative' }}>
          {/* HUD Report */}
-         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)' }}>
+         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)', maxWidth: '300px' }}>
             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
             <div style={{display: 'flex', alignItems: 'baseline', gap: '8px'}}>
               <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold' }}>{totalWidth}'</span>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
             </div>
             
-            {route.crossSection.elements.map((el, i) => {
-              const warnings: React.ReactNode[] = [];
-              if (el.type === 'parking_lane') {
-                const hasPrevDrive = route.crossSection.elements[i - 1]?.type === 'drive_lane';
-                const hasNextDrive = route.crossSection.elements[i + 1]?.type === 'drive_lane';
-                const adjacentDrives = (hasPrevDrive ? 1 : 0) + (hasNextDrive ? 1 : 0);
-                if (adjacentDrives !== 1) {
-                  warnings.push(<span key={`${i}-err`} style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 'bold' }}>ERROR: Parking lane must have EXACTLY ONE adjacent drive lane</span>);
-                }
-                
-                const nextEl = route.crossSection.elements[i + 1];
-                if (nextEl?.type === 'parking_lane') {
-                  const angle1 = el.parkingAngle || 0;
-                  const angle2 = nextEl.parkingAngle || 0;
-                  if (angle1 > 0 && angle2 > 0) {
-                    warnings.push(<span key={`${i}-warn`} style={{ color: 'var(--color-warning)', fontSize: '0.75rem', fontWeight: 'bold' }}>WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.</span>);
-                  }
-                }
-              }
-              return warnings;
-            })}
+            {errors.map((err, idx) => (
+              <span key={`err-${idx}`} style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 'bold' }}>{err}</span>
+            ))}
+            {warnings.map((warn, idx) => (
+              <span key={`warn-${idx}`} style={{ color: 'var(--color-warning)', fontSize: '0.75rem', fontWeight: 'bold' }}>{warn}</span>
+            ))}
          </div>
          
          <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>
