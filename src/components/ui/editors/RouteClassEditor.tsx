@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { RouteClass, RouteElement, RouteElementType } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
-import { ColorSwatchPicker } from '../ColorSwatchPicker';
 import { getLaneColor, getParkingStripeBackground } from '../styleUtils';
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 
@@ -23,7 +22,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
     setDraggedIndex(index);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault(); // Necessary to allow dropping
   };
 
@@ -163,30 +162,94 @@ export function RouteClassEditor({ id }: { id?: string }) {
     const px = (ft: number) => ft * pxPerFt;
     
     const totalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
-    const pxTotal = totalWidth * pxPerFt;
     
-    const renderCrossSection = (isHorizontal: boolean) => {
+    const renderCrossSection = (isHorizontal: boolean, sectionType: 'leg' | 'setback' = 'leg', position: 'top' | 'bottom' | 'left' | 'right' | 'leg' = 'leg') => {
+      const lastDriveIndexH = [...route.crossSection.elements].findLastIndex(el => el.type === 'drive_lane');
+      
       return (
         <div className={`lane-layout-${isHorizontal ? 'col' : 'row'}`} style={{ 
           display: 'flex', 
           flexDirection: isHorizontal ? 'column' : 'row',
-          width: isHorizontal ? '100%' : pxTotal,
-          height: isHorizontal ? pxTotal : '100%',
-          boxShadow: '0 0 40px rgba(0,0,0,0.5)'
+          width: '100%',
+          height: '100%',
         }}>
            {route.crossSection.elements.map((el, i) => {
+             const isFarSide = isHorizontal && i > lastDriveIndexH;
+             const effectiveSectionType = isFarSide ? 'leg' : sectionType;
+             
              const isHovered = hoveredIndex === i;
              const bgColor = getLaneColor(el.type);
              
+             const isPreemptedParking = el.type === 'parking_lane' && effectiveSectionType === 'setback';
+             const vehic = (el.type === 'drive_lane' || (el.type === 'parking_lane' && !isPreemptedParking));
+
+             const prevEl = route.crossSection.elements[i - 1];
+             const nextEl = route.crossSection.elements[i + 1];
+             
+             const prevPreempted = prevEl?.type === 'parking_lane' && effectiveSectionType === 'setback';
+             const nextPreempted = nextEl?.type === 'parking_lane' && effectiveSectionType === 'setback';
+             
+             const prevVehic = prevEl ? (prevEl.type === 'drive_lane' || (prevEl.type === 'parking_lane' && !prevPreempted)) : false;
+             const nextVehic = nextEl ? (nextEl.type === 'drive_lane' || (nextEl.type === 'parking_lane' && !nextPreempted)) : false;
+
+             const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
+             const getLaneDivider = (el1: RouteElement, el2: RouteElement) => {
+                if (!el1 || !el2) return 'none';
+                const isOpposite = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction !== el2.direction;
+                const isSame = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction === el2.direction;
+                if (isOpposite) return '3px double #eab308';
+                if (isSame) return '2px dashed rgba(255,255,255,0.5)';
+                return 'none';
+             };
+             
+             let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
+             
+             if (!vehic) {
+                if (prevEl && prevVehic) {
+                   if (isHorizontal) bTop = curb; else bLeft = curb;
+                }
+                if (nextEl && nextVehic) {
+                   if (isHorizontal) bBottom = curb; else bRight = curb;
+                }
+             } else {
+                if (prevEl && prevVehic) {
+                   const divider = getLaneDivider(el, prevEl);
+                   if (isHorizontal) bTop = divider; else bLeft = divider;
+                }
+             }
+
              let bgImage = 'none';
-             if (el.type === 'parking_lane') {
+             if (el.type === 'parking_lane' && effectiveSectionType === 'leg') {
                const pLength = store.config.parkingStallLength || 18;
                const pWidth = store.config.parkingStallWidth || 7;
                bgImage = getParkingStripeBackground(i, route.crossSection.elements, !isHorizontal, pLength, pWidth, pxPerFt);
              }
 
+             const renderBgColor = isPreemptedParking
+               ? getLaneColor('lawn_strip') 
+               : ((el as any).displayStyle?.fillColor || bgColor);
+
+             let tl = 0, tr = 0, bl = 0, br = 0;
+             const r = px(5);
+
+             if (isPreemptedParking) {
+                if (isHorizontal) {
+                   const isTopParking = i < firstDriveIndexH;
+                   if (position === 'left') {
+                      if (isTopParking) br = r; else tr = r;
+                   } else if (position === 'right') {
+                      if (isTopParking) bl = r; else tl = r;
+                   }
+                } else {
+                   const isLeftParking = i < firstDriveIndexV;
+                   if (position === 'top') {
+                      if (isLeftParking) br = r; else bl = r;
+                   }
+                }
+             }
+
              let arrow = null;
-             if (el.type === 'drive_lane') {
+             if (el.type === 'drive_lane' && effectiveSectionType === 'leg') {
                const dir = el.direction || 'right';
                if (!isHorizontal) {
                  arrow = dir === 'right' ? '↑' : dir === 'left' ? '↓' : '↕';
@@ -197,28 +260,45 @@ export function RouteClassEditor({ id }: { id?: string }) {
              
              return (
                <div key={`${isHorizontal ? 'h' : 'v'}-${el.id}`} 
-                 draggable
-                 onDragStart={(e) => { e.stopPropagation(); handleDragStart(i); }}
-                 onDragOver={(e) => handleDragOver(e, i)}
-                 onDragEnter={() => handleDragEnter(i)}
-                 onDragEnd={() => setDraggedIndex(null)}
-                 onClick={() => scrollToLane(i)}
-                 onMouseEnter={() => setHoveredIndex(i)}
-                 onMouseLeave={() => setHoveredIndex(null)}
+                 draggable={sectionType === 'leg'}
+                 onDragStart={(e) => { e.stopPropagation(); if(sectionType === 'leg') handleDragStart(i); }}
+                 onDragOver={(e) => { if(sectionType === 'leg') handleDragOver(e); }}
+                 onDragEnter={() => { if(sectionType === 'leg') handleDragEnter(i); }}
+                 onDragEnd={() => { if(sectionType === 'leg') setDraggedIndex(null); }}
+                 onClick={() => { if(sectionType === 'leg') scrollToLane(i); }}
+                 onMouseEnter={() => { if(sectionType === 'leg') setHoveredIndex(i); }}
+                 onMouseLeave={() => { if(sectionType === 'leg') setHoveredIndex(null); }}
                  data-type={el.type}
                  data-direction={el.direction || 'right'}
                  style={{
-                   flex: `1 1 ${px(el.targetWidth)}px`,
-                   backgroundColor: el.displayStyle?.fillColor || bgColor,
-                   backgroundImage: bgImage,
+                   flex: `0 0 ${px(el.targetWidth)}px`,
+                   width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
+                   height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
+                   overflow: 'hidden',
+                   backgroundColor: isPreemptedParking ? getLaneColor('drive_lane') : renderBgColor,
+                   backgroundImage: isPreemptedParking ? 'none' : bgImage,
                    boxSizing: 'border-box',
                    display: 'flex', flexDirection: isHorizontal ? 'row' : 'column', alignItems: 'center', justifyContent: 'center',
-                   cursor: 'grab',
+                   cursor: sectionType === 'leg' ? 'grab' : 'default',
                    opacity: draggedIndex === i ? 0.5 : 1,
                    transition: 'all 0.2s ease',
-                   position: 'relative'
+                   position: 'relative',
+                   borderTop: isPreemptedParking ? 'none' : bTop, 
+                   borderBottom: isPreemptedParking ? 'none' : bBottom, 
+                   borderLeft: isPreemptedParking ? 'none' : bLeft, 
+                   borderRight: isPreemptedParking ? 'none' : bRight
                  }}>
-                  {!isHorizontal && (
+                  {isPreemptedParking && (
+                     <div style={{
+                        position: 'absolute', inset: 0,
+                        backgroundColor: renderBgColor,
+                        borderTopLeftRadius: tl, borderTopRightRadius: tr,
+                        borderBottomLeftRadius: bl, borderBottomRightRadius: br,
+                        borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
+                        boxSizing: 'border-box'
+                     }} />
+                  )}
+                  {!isHorizontal && sectionType === 'leg' && (
                     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none'}}>
                       {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
                       <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
@@ -227,7 +307,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
                       </span>
                     </div>
                   )}
-                  {isHorizontal && (
+                  {isHorizontal && sectionType === 'leg' && (
                     <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', pointerEvents: 'none'}}>
                       <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
                         {el.type.replace('_', ' ')}
@@ -236,7 +316,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
                       {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
                     </div>
                   )}
-                  {isHovered && !isHorizontal && (
+                  {isHovered && !isHorizontal && sectionType === 'leg' && (
                     <div style={{position: 'absolute', bottom: '40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', color: '#4ade80', fontSize: '0.9rem', width: 'max-content', textAlign: 'center', pointerEvents: 'none', zIndex: 10}}>
                       Min {el.minWidth}' / Max {el.maxWidth}'
                     </div>
@@ -248,11 +328,216 @@ export function RouteClassEditor({ id }: { id?: string }) {
       );
     }
     
+    const curbRadius = route.curbRadius ?? store.config.pedestrianCurbRadius ?? 15;
+    const pedRadius = store.config.pedestrianCurbRadius ?? 15;
+    const baseRadius = Math.max(curbRadius, pedRadius);
+    const stripeRadius = pedRadius;
+    const firstDriveIndexH = route.crossSection.elements.findIndex(el => el.type === 'drive_lane');
+    const lastDriveIndexH = [...route.crossSection.elements].findLastIndex(el => el.type === 'drive_lane');
+    const firstDriveIndexV = route.crossSection.elements.findIndex(el => el.type === 'drive_lane');
+    const lastDriveIndexV = [...route.crossSection.elements].findLastIndex(el => el.type === 'drive_lane');
+
+    const getIntCellType = (v_i: number, h_i: number) => {
+       const v_el = route.crossSection.elements[v_i];
+       const h_el = route.crossSection.elements[h_i];
+       if (!v_el || !h_el) return 'none';
+       
+       const isFarSide = h_i > lastDriveIndexH;
+       if (isFarSide) {
+          if (v_el.type === 'sidewalk') return 'sidewalk';
+          if (h_el.type === 'parking_lane') return 'lawn_strip';
+          return h_el.type;
+       }
+       
+       const has = (t: string) => v_el.type === t || h_el.type === t;
+       if (has('sidewalk')) {
+          if (has('drive_lane')) return 'crosswalk';
+          return 'sidewalk';
+       }
+       if (has('drive_lane')) return 'drive_lane';
+       if (has('lawn_strip')) return 'lawn_strip';
+       if (has('parking_lane')) {
+          if (v_el.type === 'parking_lane' && h_el.type === 'parking_lane') return 'lawn_strip';
+          return 'drive_lane';
+       }
+       return 'none';
+    };
+
+    const isCellVehic = (t: string) => t === 'drive_lane' || t === 'parking_lane' || t === 'crosswalk';
+    
+    const getLaneDivider = (el1: RouteElement, el2: RouteElement) => {
+       if (!el1 || !el2) return 'none';
+       const isOpposite = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction !== el2.direction;
+       const isSame = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction === el2.direction;
+       if (isOpposite) return '3px double #eab308';
+       if (isSame) return '2px dashed rgba(255,255,255,0.5)';
+       return 'none';
+    };
+
+    const intersectionCells: React.ReactNode[] = [];
+    const N = route.crossSection.elements.length;
+    route.crossSection.elements.forEach((v_el, v_i) => {
+      route.crossSection.elements.forEach((h_el, h_i) => {
+        const type = getIntCellType(v_i, h_i);
+        const vehic = isCellVehic(type);
+        
+        let bg = getLaneColor(type === 'crosswalk' ? 'drive_lane' : type);
+        let bgImage = 'none';
+        
+        if (type === 'crosswalk') {
+           const isVertDrive = v_el.type === 'drive_lane';
+           bgImage = `repeating-linear-gradient(${isVertDrive ? '90deg' : '0deg'}, transparent, transparent 6px, rgba(255,255,255,0.3) 6px, rgba(255,255,255,0.3) 14px)`;
+        }
+
+        let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
+        const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
+
+        const isFarSide = h_i > lastDriveIndexH;
+        if (!vehic) {
+           let tVehic = false;
+           if (h_i > 0) tVehic = isCellVehic(getIntCellType(v_i, h_i - 1));
+           else tVehic = v_el.type === 'drive_lane';
+           if (tVehic) bTop = curb;
+
+           let bVehic = false;
+           if (h_i < N - 1) bVehic = isCellVehic(getIntCellType(v_i, h_i + 1));
+           if (bVehic) bBottom = curb;
+
+           let lVehic = false;
+           if (v_i > 0) lVehic = isCellVehic(getIntCellType(v_i - 1, h_i));
+           else {
+              lVehic = h_el.type === 'drive_lane' || (h_el.type === 'parking_lane' && isFarSide);
+           }
+           if (lVehic) bLeft = curb;
+
+           let rVehic = false;
+           if (v_i < N - 1) rVehic = isCellVehic(getIntCellType(v_i + 1, h_i));
+           else {
+              rVehic = h_el.type === 'drive_lane' || (h_el.type === 'parking_lane' && isFarSide);
+           }
+           if (rVehic) bRight = curb;
+        } else {
+           if (isFarSide) {
+              const prev_h_el = route.crossSection.elements[h_i - 1];
+              if (prev_h_el && h_i > 0) {
+                 const tType = getIntCellType(v_i, h_i - 1);
+                 if (isCellVehic(tType)) {
+                    bTop = getLaneDivider(h_el, prev_h_el);
+                 }
+              }
+           }
+        }
+
+        intersectionCells.push(
+          <div key={`int-${v_i}-${h_i}`} style={{
+            gridRow: h_i + 3,
+            gridColumn: v_i + 3,
+            backgroundColor: bg,
+            backgroundImage: bgImage,
+            borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
+            boxSizing: 'border-box'
+          }} />
+        );
+      });
+    });
+
+    // NW Apron
+    if (firstDriveIndexH > 0 && firstDriveIndexV > 0) {
+      intersectionCells.push(
+        <div key="apron-nw" style={{
+          gridRow: 3 + firstDriveIndexH - 1,
+          gridColumn: 3 + firstDriveIndexV - 1,
+          position: 'relative',
+          zIndex: 10
+        }}>
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: `${px(baseRadius)}px`,
+            height: `${px(baseRadius)}px`,
+            backgroundImage: `radial-gradient(circle at 0% 0%, transparent ${px(baseRadius)}px, ${getLaneColor('sidewalk')} ${px(baseRadius)}px, ${getLaneColor('sidewalk')} ${px(baseRadius + 0.5)}px, ${getLaneColor('drive_lane')} ${px(baseRadius + 0.5)}px)`,
+            maskImage: `radial-gradient(circle at 0% 0%, transparent ${px(baseRadius - 0.2)}px, black ${px(baseRadius - 0.2)}px)`,
+            WebkitMaskImage: `radial-gradient(circle at 0% 0%, transparent ${px(baseRadius - 0.2)}px, black ${px(baseRadius - 0.2)}px)`,
+            pointerEvents: 'none'
+          }}>
+             <div style={{
+                position: 'absolute', inset: 0,
+                backgroundImage: `
+                  radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), transparent ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px),
+                  linear-gradient(to top, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
+                  linear-gradient(to left, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
+                  repeating-linear-gradient(45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)
+                `,
+                maskImage: `
+                  radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px),
+                  linear-gradient(to bottom, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)),
+                  linear-gradient(to right, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))
+                `,
+                WebkitMaskImage: `
+                  radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px),
+                  linear-gradient(to bottom, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)),
+                  linear-gradient(to right, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))
+                `
+             }} />
+          </div>
+        </div>
+      );
+    }
+
+    // NE Apron
+    if (firstDriveIndexH > 0 && lastDriveIndexV < N - 1) {
+      intersectionCells.push(
+        <div key="apron-ne" style={{
+          gridRow: 3 + firstDriveIndexH - 1,
+          gridColumn: 3 + lastDriveIndexV + 1,
+          position: 'relative',
+          zIndex: 10
+        }}>
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: `${px(baseRadius)}px`,
+            height: `${px(baseRadius)}px`,
+            backgroundImage: `radial-gradient(circle at 100% 0%, transparent ${px(baseRadius)}px, ${getLaneColor('sidewalk')} ${px(baseRadius)}px, ${getLaneColor('sidewalk')} ${px(baseRadius + 0.5)}px, ${getLaneColor('drive_lane')} ${px(baseRadius + 0.5)}px)`,
+            maskImage: `radial-gradient(circle at 100% 0%, transparent ${px(baseRadius - 0.2)}px, black ${px(baseRadius - 0.2)}px)`,
+            WebkitMaskImage: `radial-gradient(circle at 100% 0%, transparent ${px(baseRadius - 0.2)}px, black ${px(baseRadius - 0.2)}px)`,
+            pointerEvents: 'none'
+          }}>
+             <div style={{
+                position: 'absolute', inset: 0,
+                backgroundImage: `
+                  radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), transparent ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px),
+                  linear-gradient(to top, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
+                  linear-gradient(to right, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
+                  repeating-linear-gradient(-45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)
+                `,
+                maskImage: `
+                  radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px),
+                  linear-gradient(to bottom, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)),
+                  linear-gradient(to left, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))
+                `,
+                WebkitMaskImage: `
+                  radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px),
+                  linear-gradient(to bottom, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)),
+                  linear-gradient(to left, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))
+                `
+             }} />
+          </div>
+        </div>
+      );
+    }
+
+    const setbackDist = store.config.intersectionDaylightDistance ?? 25;
+    const gridCols = `1fr ${px(setbackDist)}px ${route.crossSection.elements.map(el => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
+    const gridRows = `1fr ${px(setbackDist)}px ${route.crossSection.elements.map(el => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
+
     const isValid = totalWidth % (store.config?.baseGridSize || 12) === 0;
     const statusColor = isValid ? 'var(--color-success)' : 'var(--color-warning)';
 
     return (
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
          {/* HUD Report */}
          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)' }}>
             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
@@ -261,17 +546,46 @@ export function RouteClassEditor({ id }: { id?: string }) {
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
             </div>
          </div>
-
-         {/* North / South Pane */}
-         <div style={{ height: '50%', position: 'relative', borderBottom: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
-            <span style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>North / South</span>
-            {renderCrossSection(false)}
-         </div>
          
-         {/* East / West Pane */}
-         <div style={{ height: '50%', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
-            <span style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>East / West</span>
-            {renderCrossSection(true)}
+         <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>
+           Intersection Preview
+         </div>
+
+         <div style={{ 
+           display: 'grid',
+           width: '100%',
+           height: '100%',
+           gridTemplateColumns: gridCols,
+           gridTemplateRows: gridRows,
+           filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))'
+         }}>
+            <div style={{ gridRow: 1, gridColumn: `3 / span ${N}` }}>{renderCrossSection(false, 'leg')}</div>
+            <div style={{ gridRow: 2, gridColumn: `3 / span ${N}` }}>{renderCrossSection(false, 'setback', 'top')}</div>
+
+            <div style={{ gridRow: `3 / span ${N}`, gridColumn: 1 }}>{renderCrossSection(true, 'leg')}</div>
+            <div style={{ gridRow: `3 / span ${N}`, gridColumn: 2 }}>{renderCrossSection(true, 'setback', 'left')}</div>
+            <div style={{ gridRow: `3 / span ${N}`, gridColumn: N+3 }}>{renderCrossSection(true, 'setback', 'right')}</div>
+            <div style={{ gridRow: `3 / span ${N}`, gridColumn: N+4 }}>{renderCrossSection(true, 'leg')}</div>
+            
+            {intersectionCells}
+         </div>
+
+         {/* Scale Reference Bar */}
+         <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
+              1 Grid Cell = {gridFt}'
+            </span>
+            <div style={{ display: 'flex', border: '1px solid var(--text-primary)', borderTop: 'none', height: '8px', width: `${pxPerGrid * 4}px`, boxSizing: 'border-box' }}>
+               <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
+               <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
+               <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
+               <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
+            </div>
+            <div style={{ display: 'flex', width: `${pxPerGrid * 4}px`, justifyContent: 'space-between', color: 'var(--text-primary)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
+               <span>0</span>
+               <span>{gridFt * 2}'</span>
+               <span>{gridFt * 4}'</span>
+            </div>
          </div>
       </div>
     );
@@ -302,6 +616,10 @@ export function RouteClassEditor({ id }: { id?: string }) {
               <option value="one_way">One Way</option>
             </select>
           </div>
+          <div className="inspector-field">
+            <label>Curb Radius (ft)</label>
+            <input type="number" placeholder={`${store.config?.pedestrianCurbRadius ?? 15} (Default)`} value={route.curbRadius ?? ''} onChange={e => updateRoute({ curbRadius: e.target.value ? Number(e.target.value) : undefined })} />
+          </div>
         </div>
 
       <div className="inspector-section">
@@ -315,7 +633,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
                ref={(elRef) => { laneRefs.current[i] = elRef; }}
                draggable
                onDragStart={() => handleDragStart(i)}
-               onDragOver={(e) => handleDragOver(e, i)}
+               onDragOver={(e) => handleDragOver(e)}
                onDragEnter={() => handleDragEnter(i)}
                onDragEnd={() => setDraggedIndex(null)}
                onMouseEnter={() => setHoveredIndex(i)} 
@@ -395,13 +713,13 @@ export function RouteClassEditor({ id }: { id?: string }) {
     const pxPerGrid = 40;
     const totalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
     const gridCells = totalWidth / gridFt;
-    const isEven = gridCells % 2 === 0;
+    const isOdd = Math.round(gridCells) % 2 !== 0;
 
     return (
       <DrillDownLayout 
         canvasStyle={{ 
           backgroundSize: `${pxPerGrid}px ${pxPerGrid}px`,
-          backgroundPosition: isEven ? `calc(50% - ${pxPerGrid/2}px) calc(50% - ${pxPerGrid/2}px)` : 'center center'
+          backgroundPosition: isOdd ? `calc(50% - ${pxPerGrid/2}px) calc(50% - ${pxPerGrid/2}px)` : 'center center'
         }}
         canvas={renderCanvas()}
         inspector={renderInspector()}

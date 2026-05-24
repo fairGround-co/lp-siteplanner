@@ -5,6 +5,8 @@ export interface SystemConfig {
   snapToGrid: boolean;
   parkingStallLength?: number;
   parkingStallWidth?: number;
+  pedestrianCurbRadius?: number;
+  intersectionDaylightDistance?: number;
 }
 
 export interface Point {
@@ -53,6 +55,7 @@ export interface RouteCrossSection {
 export interface RouteClass {
   id: string;
   name: string;
+  curbRadius?: number;
   crossSection: RouteCrossSection;
 }
 

@@ -137,6 +137,50 @@ export function SystemSettingsCard() {
             <span style={{fontSize: '1.2rem', userSelect: 'none'}}>{config.snapToGrid ? 'On' : 'Off'}</span>
          </div>
 
+         <div className="library-item" style={{ flexDirection: 'column', alignItems: 'flex-start', background: 'var(--bg-primary)' }}>
+            <span style={{fontSize: '0.8rem', color: 'var(--text-tertiary)'}}>Def. Curb Radius</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+              <input 
+                type="number" 
+                value={config.pedestrianCurbRadius ?? 15}
+                onChange={e => updateConfig({ pedestrianCurbRadius: parseFloat(e.target.value) || 15 })}
+                style={{ 
+                  fontSize: '1.2rem', 
+                  width: '40px', 
+                  background: 'transparent', 
+                  color: 'var(--text-primary)', 
+                  border: 'none', 
+                  padding: 0, 
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <span style={{fontSize: '1.2rem'}}>ft</span>
+            </div>
+         </div>
+
+         <div className="library-item" style={{ flexDirection: 'column', alignItems: 'flex-start', background: 'var(--bg-primary)' }}>
+            <span style={{fontSize: '0.8rem', color: 'var(--text-tertiary)'}}>Int. Daylight</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+              <input 
+                type="number" 
+                value={config.intersectionDaylightDistance ?? 25}
+                onChange={e => updateConfig({ intersectionDaylightDistance: parseFloat(e.target.value) || 25 })}
+                style={{ 
+                  fontSize: '1.2rem', 
+                  width: '40px', 
+                  background: 'transparent', 
+                  color: 'var(--text-primary)', 
+                  border: 'none', 
+                  padding: 0, 
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <span style={{fontSize: '1.2rem'}}>ft</span>
+            </div>
+         </div>
+
        </div>
     </div>
   );
