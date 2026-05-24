@@ -231,8 +231,8 @@ export function RouteClassEditor({ id }: { id?: string }) {
          {/* HUD Report */}
          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)', maxWidth: '300px' }}>
             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
-            <div style={{display: 'flex', alignItems: 'baseline', gap: '8px'}}>
-              <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold' }}>{totalWidth}'</span>
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px'}}>
+              <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold', lineHeight: '1.2' }}>{totalWidth}'</span>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
             </div>
             
