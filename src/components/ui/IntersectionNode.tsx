@@ -168,15 +168,14 @@ export function RouteLeg({
             
             // To align fluidly with straight border in adjacent cell, the div must overhang into it by cw
             const adjustedPos: any = { ...posStyle };
-            // We use calc(-cw + 0.5px) to fix a known browser subpixel rendering offset between borders and absolute positioning
-            if (cssCorner.includes('top')) adjustedPos.top = `calc(-${cw}px + 0.5px)`; else adjustedPos.bottom = `calc(-${cw}px + 0.5px)`;
-            if (cssCorner.includes('left')) adjustedPos.left = `calc(-${cw}px + 0.5px)`; else adjustedPos.right = `calc(-${cw}px + 0.5px)`;
+            if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
+            if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
 
             nibbles.push(
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...adjustedPos,
                 width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, ${getLaneColor('parking_lane')} ${cosmeticR - 0.5}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw + 0.5}px)`,
+                background: `radial-gradient(circle at ${ox} ${oy}, ${getLaneColor('parking_lane')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
