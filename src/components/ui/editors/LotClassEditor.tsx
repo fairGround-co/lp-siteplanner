@@ -45,6 +45,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   const [sampleLotsCount, setSampleLotsCount] = useState(5);
   const [isTitlePopupOpen, setIsTitlePopupOpen] = useState(false);
   const [hoveredLotInfo, setHoveredLotInfo] = useState<{row: number, col: number} | null>(null);
+  const [mousePos, setMousePos] = useState({x: 0, y: 0});
   const [activeOverride, setActiveOverride] = useState<'front' | 'rear' | 'side' | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [isHudOpen, setIsHudOpen] = useState(true);
@@ -342,6 +343,7 @@ export function LotClassEditor({ id }: { id?: string }) {
                key={`${row}-${col}`} 
                onMouseEnter={() => setHoveredLotInfo({ row, col })}
                onMouseLeave={() => setHoveredLotInfo(null)}
+               onMouseMove={e => setMousePos({ x: e.clientX, y: e.clientY })}
                style={{
                  position: 'absolute', top: px(lTop), left: px(lLeft), width: px(width), height: px(depth),
                  backgroundColor: lot.displayStyle?.fillColor || 'rgba(74, 222, 128, 0.2)',
@@ -406,11 +408,13 @@ export function LotClassEditor({ id }: { id?: string }) {
                 
                 {hoveredLotInfo?.row === row && hoveredLotInfo?.col === col && (
                   <div style={{
-                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    position: 'fixed', top: mousePos.y, left: mousePos.x,
+                    transform: `translate(${mousePos.x > window.innerWidth - 220 ? 'calc(-100% - 15px)' : '15px'}, ${mousePos.y > window.innerHeight - 220 ? 'calc(-100% - 15px)' : '15px'})`,
                     background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)',
-                    padding: '12px', borderRadius: '6px', zIndex: 150, boxShadow: 'var(--shadow)',
+                    padding: '12px', borderRadius: '6px', zIndex: 9999, boxShadow: 'var(--shadow)',
                     display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '180px',
-                    color: 'var(--text-primary)', fontSize: '0.8rem', cursor: 'default'
+                    color: 'var(--text-primary)', fontSize: '0.8rem', cursor: 'default',
+                    pointerEvents: 'none' // so it doesn't intercept hover events
                   }}>
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px' }}>Lot Specifics</h4>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
