@@ -175,7 +175,7 @@ export function RouteLeg({
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...adjustedPos,
                 width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
+                background: `radial-gradient(circle at ${ox} ${oy}, ${getLaneColor('parking_lane')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
