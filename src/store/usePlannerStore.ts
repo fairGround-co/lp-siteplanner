@@ -29,6 +29,9 @@ interface PlannerState {
   routeClasses: Record<string, RouteClass>;
   lotClasses: Record<string, LotClass>;
   blockGroupTemplates: Record<string, BlockGroupTemplate>;
+  routeClassOrder: string[];
+  lotClassOrder: string[];
+  blockGroupTemplateOrder: string[];
   
   // --- CONFIG ACTIONS ---
   updateConfig: (partialConfig: Partial<SystemConfig>) => void;
@@ -41,6 +44,9 @@ interface PlannerState {
   addBlockGroupTemplate: (template: BlockGroupTemplate) => void;
   updateBlockGroupTemplate: (id: string, updates: Partial<BlockGroupTemplate>) => void;
   deleteBlockGroupTemplate: (id: string) => void;
+  reorderLotClasses: (oldIndex: number, newIndex: number) => void;
+  reorderRouteClasses: (oldIndex: number, newIndex: number) => void;
+  reorderBlockGroupTemplates: (oldIndex: number, newIndex: number) => void;
   exportConfig: () => string;
   importConfig: (json: string) => void;
 
@@ -89,6 +95,9 @@ export const usePlannerStore = create<PlannerState>()(
     routeClasses: {},
     lotClasses: {},
     blockGroupTemplates: {},
+    routeClassOrder: [],
+    lotClassOrder: [],
+    blockGroupTemplateOrder: [],
 
     anchors: {},
     nodes: {},
@@ -107,6 +116,7 @@ export const usePlannerStore = create<PlannerState>()(
     }),
     addLotClass: (lotClass) => set((state) => {
       state.lotClasses[lotClass.id] = lotClass;
+      state.lotClassOrder.push(lotClass.id);
     }),
     updateLotClass: (id, updates) => set((state) => {
       if (state.lotClasses[id]) {
@@ -115,9 +125,11 @@ export const usePlannerStore = create<PlannerState>()(
     }),
     deleteLotClass: (id) => set((state) => {
       delete state.lotClasses[id];
+      state.lotClassOrder = state.lotClassOrder.filter(existingId => existingId !== id);
     }),
     addRouteClass: (routeClass) => set((state) => {
       state.routeClasses[routeClass.id] = routeClass;
+      state.routeClassOrder.push(routeClass.id);
     }),
     updateRouteClass: (id, updates) => set((state) => {
       if (state.routeClasses[id]) {
@@ -126,9 +138,11 @@ export const usePlannerStore = create<PlannerState>()(
     }),
     deleteRouteClass: (id) => set((state) => {
       delete state.routeClasses[id];
+      state.routeClassOrder = state.routeClassOrder.filter(existingId => existingId !== id);
     }),
     addBlockGroupTemplate: (template) => set((state) => {
       state.blockGroupTemplates[template.id] = template;
+      state.blockGroupTemplateOrder.push(template.id);
     }),
     updateBlockGroupTemplate: (id, updates) => set((state) => {
       if (state.blockGroupTemplates[id]) {
@@ -137,6 +151,19 @@ export const usePlannerStore = create<PlannerState>()(
     }),
     deleteBlockGroupTemplate: (id) => set((state) => {
       delete state.blockGroupTemplates[id];
+      state.blockGroupTemplateOrder = state.blockGroupTemplateOrder.filter(existingId => existingId !== id);
+    }),
+    reorderLotClasses: (oldIndex, newIndex) => set((state) => {
+      const [item] = state.lotClassOrder.splice(oldIndex, 1);
+      state.lotClassOrder.splice(newIndex, 0, item);
+    }),
+    reorderRouteClasses: (oldIndex, newIndex) => set((state) => {
+      const [item] = state.routeClassOrder.splice(oldIndex, 1);
+      state.routeClassOrder.splice(newIndex, 0, item);
+    }),
+    reorderBlockGroupTemplates: (oldIndex, newIndex) => set((state) => {
+      const [item] = state.blockGroupTemplateOrder.splice(oldIndex, 1);
+      state.blockGroupTemplateOrder.splice(newIndex, 0, item);
     }),
     exportConfig: () => {
       const state = get();
@@ -144,7 +171,10 @@ export const usePlannerStore = create<PlannerState>()(
         config: state.config,
         routeClasses: state.routeClasses,
         lotClasses: state.lotClasses,
-        blockGroupTemplates: state.blockGroupTemplates
+        blockGroupTemplates: state.blockGroupTemplates,
+        routeClassOrder: state.routeClassOrder,
+        lotClassOrder: state.lotClassOrder,
+        blockGroupTemplateOrder: state.blockGroupTemplateOrder
       };
       return JSON.stringify(exportData, null, 2);
     },
@@ -152,9 +182,18 @@ export const usePlannerStore = create<PlannerState>()(
       try {
         const data = JSON.parse(json);
         if (data.config) state.config = data.config;
-        if (data.routeClasses) state.routeClasses = data.routeClasses;
-        if (data.lotClasses) state.lotClasses = data.lotClasses;
-        if (data.blockGroupTemplates) state.blockGroupTemplates = data.blockGroupTemplates;
+        if (data.routeClasses) {
+          state.routeClasses = data.routeClasses;
+          state.routeClassOrder = data.routeClassOrder || Object.keys(data.routeClasses);
+        }
+        if (data.lotClasses) {
+          state.lotClasses = data.lotClasses;
+          state.lotClassOrder = data.lotClassOrder || Object.keys(data.lotClasses);
+        }
+        if (data.blockGroupTemplates) {
+          state.blockGroupTemplates = data.blockGroupTemplates;
+          state.blockGroupTemplateOrder = data.blockGroupTemplateOrder || Object.keys(data.blockGroupTemplates);
+        }
       } catch (e) {
         console.error("Failed to import config", e);
       }
