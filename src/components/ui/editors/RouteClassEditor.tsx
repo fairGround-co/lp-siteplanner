@@ -181,6 +181,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
     
     let baseTotalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
     let overlapReduction = 0;
+    const effectiveWidths = [...route.crossSection.elements.map(el => el.targetWidth)];
 
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -247,7 +248,10 @@ export function RouteClassEditor({ id }: { id?: string }) {
             if (angle1 === angle2) {
               const rad = angle1 * Math.PI / 180;
               const stallWidth = store.config?.parkingStallWidth || 9;
-              overlapReduction += (stallWidth * Math.cos(rad));
+              const overlapAmt = stallWidth * Math.cos(rad);
+              overlapReduction += overlapAmt;
+              effectiveWidths[i] -= overlapAmt / 2;
+              effectiveWidths[i + 1] -= overlapAmt / 2;
             } else {
               warnings.push(`WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.`);
             }
@@ -428,16 +432,24 @@ export function RouteClassEditor({ id }: { id?: string }) {
                 </div>
               )}
               {el.type === 'parking_lane' ? (
-                <div className="inspector-field" style={{flex: 1}}>
-                  <label>Parking Angle</label>
-                  <select value={el.parkingAngle || 0} onChange={e => handleAngleChange(i, Number(e.target.value))} style={{padding: '4px'}}>
-                    <option value={0}>0° (Parallel)</option>
-                    <option value={30}>30° (Angled)</option>
-                    <option value={45}>45° (Angled)</option>
-                    <option value={60}>60° (Angled)</option>
-                    <option value={90}>90° (Perpendicular)</option>
-                  </select>
-                </div>
+                <>
+                  <div className="inspector-field" style={{flex: 1}}>
+                    <label>Parking Angle</label>
+                    <select value={el.parkingAngle || 0} onChange={e => handleAngleChange(i, Number(e.target.value))} style={{padding: '4px'}}>
+                      <option value={0}>0° (Parallel)</option>
+                      <option value={30}>30° (Angled)</option>
+                      <option value={45}>45° (Angled)</option>
+                      <option value={60}>60° (Angled)</option>
+                      <option value={90}>90° (Perpendicular)</option>
+                    </select>
+                  </div>
+                  <div className="inspector-field" style={{flex: 1}}>
+                    <label>Width</label>
+                    <div style={{padding: '4px', fontSize: '0.9rem', color: effectiveWidths[i] !== el.targetWidth ? '#eab308' : '#ccc', display: 'flex', alignItems: 'center', height: '100%', fontWeight: 'bold'}}>
+                      {Math.round(effectiveWidths[i] * 10) / 10}' {effectiveWidths[i] !== el.targetWidth && '(Interlocked)'}
+                    </div>
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="inspector-field" style={{flex: 1}}>
