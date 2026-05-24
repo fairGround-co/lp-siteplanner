@@ -158,7 +158,8 @@ export function RouteLeg({
           // For isHorizontal=false (V route): prev=left, next=right. setbackEdge = top or bottom
           const addNibble = (cssCorner: string) => {
             // cssCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-            // The radial gradient origin is at the corner, transparent inside radius, grass outside
+            // Quarter-circle of parking gray at the corner, grass green in the pointed parts outside
+            const parkingColor = getLaneColor('parking_lane');
             const posStyle: any = {};
             if (cssCorner.includes('top')) posStyle.top = 0; else posStyle.bottom = 0;
             if (cssCorner.includes('left')) posStyle.left = 0; else posStyle.right = 0;
@@ -168,7 +169,7 @@ export function RouteLeg({
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...posStyle,
                 width: `${cosmeticR}px`, height: `${cosmeticR}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, ${grassColor} ${cosmeticR}px, transparent ${cosmeticR}px)`,
+                background: `radial-gradient(circle at ${ox} ${oy}, ${parkingColor} ${cosmeticR}px, ${grassColor} ${cosmeticR}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
@@ -315,10 +316,15 @@ export function IntersectionNode({
 
     const isInsideDrivingBox = v_i >= firstDriveIndexV && v_i <= lastDriveIndexV && h_i >= firstDriveIndexH && h_i <= lastDriveIndexH;
 
-    // In the intersection grid, outer parking renders as pavement (not grass).
-    // Grass daylighting for outer parking only happens in setback RouteLeg sections.
-    const vType = v_el.type;
-    const hType = h_el.type;
+    // Outer parking renders as grass only when BOTH axes are "outer" (outside the driving box).
+    // This prevents the median lawn_strip from extending through outer parking,
+    // while keeping corner daylighting green where two outer parking lanes overlap.
+    const isOuterV = v_i < firstDriveIndexV || v_i > lastDriveIndexV;
+    const isOuterH = h_i < firstDriveIndexH || h_i > lastDriveIndexH;
+    const vIsOuterParking = v_el.type === 'parking_lane' && isOuterV;
+    const hIsOuterParking = h_el.type === 'parking_lane' && isOuterH;
+    const vType = (vIsOuterParking && isOuterH) ? 'lawn_strip' : v_el.type;
+    const hType = (hIsOuterParking && isOuterV) ? 'lawn_strip' : h_el.type;
 
     const has = (t: string) => vType === t || hType === t;
     if (has('sidewalk')) {
@@ -437,45 +443,89 @@ export function IntersectionNode({
   const pedRadius = config.pedestrianCurbRadius ?? 15;
   const baseRadius = Math.max(curbRadius, pedRadius);
   const stripeRadius = pedRadius;
+  const curbColor = getLaneColor('sidewalk');
+  const driveColor = getLaneColor('drive_lane');
+  const stripeW = 4; // stop line / stripe width in px
+  const stripeColor = 'rgba(255,255,255,0.4)';
 
   const renderApron = (key: string, gridRow: number, gridCol: number, pos: string) => {
     let circleAt = '0% 0%';
     let maskCircleAt = '0% 0%';
-    let stripeGradient = '';
-    let maskLinear = '';
+
+    // Stripe arc center position strings and gradient directions
+    let arcCenter = '';
+    let stopLineA = ''; // first stop line (edge A)
+    let stopLineB = ''; // second stop line (edge B)
+    let hatchAngle = 45;
+    let maskStripA = ''; // mask strip toward edge A
+    let maskStripB = ''; // mask strip toward edge B
+
+    const sr = px(stripeRadius);
 
     if (pos === 'bottom-right') {
       circleAt = '0% 0%'; maskCircleAt = '0% 0%';
-      stripeGradient = `radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), transparent calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px), linear-gradient(to top, rgba(255,255,255,0.4) 4px, transparent 4px), linear-gradient(to left, rgba(255,255,255,0.4) 4px, transparent 4px), repeating-linear-gradient(45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)`;
-      maskLinear = `radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px), linear-gradient(to bottom, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)), linear-gradient(to right, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))`;
+      arcCenter = `calc(100% - ${sr}px) calc(100% - ${sr}px)`;
+      stopLineA = `linear-gradient(to top, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      stopLineB = `linear-gradient(to left, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      hatchAngle = 45;
+      maskStripA = `linear-gradient(to bottom, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
+      maskStripB = `linear-gradient(to right, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
     } else if (pos === 'bottom-left') {
       circleAt = '100% 0%'; maskCircleAt = '100% 0%';
-      stripeGradient = `radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), transparent calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px), linear-gradient(to top, rgba(255,255,255,0.4) 4px, transparent 4px), linear-gradient(to right, rgba(255,255,255,0.4) 4px, transparent 4px), repeating-linear-gradient(-45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)`;
-      maskLinear = `radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px), linear-gradient(to bottom, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)), linear-gradient(to left, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))`;
+      arcCenter = `${sr}px calc(100% - ${sr}px)`;
+      stopLineA = `linear-gradient(to top, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      stopLineB = `linear-gradient(to right, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      hatchAngle = -45;
+      maskStripA = `linear-gradient(to bottom, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
+      maskStripB = `linear-gradient(to left, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
     } else if (pos === 'top-right') {
       circleAt = '0% 100%'; maskCircleAt = '0% 100%';
-      stripeGradient = `radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) ${px(stripeRadius)}px, transparent calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px), linear-gradient(to bottom, rgba(255,255,255,0.4) 4px, transparent 4px), linear-gradient(to left, rgba(255,255,255,0.4) 4px, transparent 4px), repeating-linear-gradient(-45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)`;
-      maskLinear = `radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) ${px(stripeRadius)}px, black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px), linear-gradient(to top, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)), linear-gradient(to right, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))`;
+      arcCenter = `calc(100% - ${sr}px) ${sr}px`;
+      stopLineA = `linear-gradient(to bottom, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      stopLineB = `linear-gradient(to left, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      hatchAngle = -45;
+      maskStripA = `linear-gradient(to top, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
+      maskStripB = `linear-gradient(to right, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
     } else if (pos === 'top-left') {
       circleAt = '100% 100%'; maskCircleAt = '100% 100%';
-      stripeGradient = `radial-gradient(circle at ${px(stripeRadius)}px ${px(stripeRadius)}px, transparent calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px), linear-gradient(to bottom, rgba(255,255,255,0.4) 4px, transparent 4px), linear-gradient(to right, rgba(255,255,255,0.4) 4px, transparent 4px), repeating-linear-gradient(45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)`;
-      maskLinear = `radial-gradient(circle at ${px(stripeRadius)}px ${px(stripeRadius)}px, black ${px(stripeRadius - 0.2)}px, transparent ${px(stripeRadius - 0.2)}px), linear-gradient(to top, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px)), linear-gradient(to left, black calc(100% - ${px(stripeRadius)}px), transparent calc(100% - ${px(stripeRadius)}px))`;
+      arcCenter = `${sr}px ${sr}px`;
+      stopLineA = `linear-gradient(to bottom, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      stopLineB = `linear-gradient(to right, ${stripeColor} ${stripeW}px, transparent ${stripeW}px)`;
+      hatchAngle = 45;
+      maskStripA = `linear-gradient(to top, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
+      maskStripB = `linear-gradient(to left, black calc(100% - ${sr}px), transparent calc(100% - ${sr}px))`;
     }
+
+    // Inner arc: curb-colored ring at the stripeRadius boundary (the pedestrian curb line)
+    const innerArc = `radial-gradient(circle at ${arcCenter}, transparent calc(${sr}px - ${stripeW}px), ${curbColor} calc(${sr}px - ${stripeW}px), ${curbColor} ${sr}px, transparent ${sr}px)`;
+    // Stop line arc: small quarter-circle connecting the two stop lines
+    const stopArc = `radial-gradient(circle at ${arcCenter}, transparent calc(${sr}px - ${stripeW}px), ${stripeColor} calc(${sr}px - ${stripeW}px), ${stripeColor} ${sr}px, transparent ${sr}px)`;
+    // Diagonal hatching
+    const hatch = `repeating-linear-gradient(${hatchAngle}deg, ${stripeColor}, ${stripeColor} ${stripeW}px, transparent ${stripeW}px, transparent 12px)`;
+
+    // Stripe layers: stop lines + hatching + stop arc (no inner curb-colored arc in stripe layer)
+    const stripeGradient = `${stopArc}, ${stopLineA}, ${stopLineB}, ${hatch}`;
+    // Mask: L-shape + quarter-circle, clipping to the crosswalk zone
+    const maskLinear = `radial-gradient(circle at ${arcCenter}, black ${sr}px, transparent ${sr}px), ${maskStripA}, ${maskStripB}`;
 
     return (
       <div key={key} style={{ gridRow, gridColumn: gridCol, position: 'relative', zIndex: 10 }}>
+        {/* Curb arc background */}
         <div
           style={{
             position: 'absolute',
             ...(pos.includes('bottom') ? { bottom: 0 } : { top: 0 }),
             ...(pos.includes('right') ? { right: 0 } : { left: 0 }),
             width: `${px(baseRadius)}px`, height: `${px(baseRadius)}px`,
-            backgroundImage: `radial-gradient(circle at ${circleAt}, transparent ${px(baseRadius)}px, ${getLaneColor('sidewalk')} ${px(baseRadius)}px, ${getLaneColor('sidewalk')} ${px(baseRadius + 0.5)}px, ${getLaneColor('drive_lane')} ${px(baseRadius + 0.5)}px)`,
+            backgroundImage: `radial-gradient(circle at ${circleAt}, transparent ${px(baseRadius)}px, ${curbColor} ${px(baseRadius)}px, ${curbColor} ${px(baseRadius + 0.5)}px, ${driveColor} ${px(baseRadius + 0.5)}px)`,
             maskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${px(baseRadius - 0.2)}px, black ${px(baseRadius - 0.2)}px)`,
             WebkitMaskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${px(baseRadius - 0.2)}px, black ${px(baseRadius - 0.2)}px)`,
             pointerEvents: 'none',
           }}
         >
+          {/* Inner curb-colored arc (between large curb arc and crosswalk hatching) */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: innerArc }} />
+          {/* Crosswalk stripes, stop lines, and hatching */}
           <div style={{ position: 'absolute', inset: 0, backgroundImage: stripeGradient, maskImage: maskLinear, WebkitMaskImage: maskLinear }} />
         </div>
       </div>
