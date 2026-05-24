@@ -8,6 +8,7 @@ export interface SystemConfig {
   pedestrianCurbRadius?: number;
   intersectionDaylightDistance?: number;
   cosmeticCurbRadius?: number; // radius for decorative roundovers at intersections (default: 2)
+  curbThickness?: number; // standard width of curb lines (default: 0.5)
 }
 
 export interface Point {

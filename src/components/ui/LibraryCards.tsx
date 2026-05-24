@@ -181,6 +181,51 @@ export function SystemSettingsCard() {
             </div>
          </div>
 
+         <div className="library-item" style={{ flexDirection: 'column', alignItems: 'flex-start', background: 'var(--bg-primary)' }}>
+            <span style={{fontSize: '0.8rem', color: 'var(--text-tertiary)'}}>Cosmetic Radius</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+              <input 
+                type="number" 
+                value={config.cosmeticCurbRadius ?? 2}
+                onChange={e => updateConfig({ cosmeticCurbRadius: parseFloat(e.target.value) || 2 })}
+                style={{ 
+                  fontSize: '1.2rem', 
+                  width: '40px', 
+                  background: 'transparent', 
+                  color: 'var(--text-primary)', 
+                  border: 'none', 
+                  padding: 0, 
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <span style={{fontSize: '1.2rem'}}>ft</span>
+            </div>
+         </div>
+
+         <div className="library-item" style={{ flexDirection: 'column', alignItems: 'flex-start', background: 'var(--bg-primary)' }}>
+            <span style={{fontSize: '0.8rem', color: 'var(--text-tertiary)'}}>Curb Thickness</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
+              <input 
+                type="number" 
+                step="0.1"
+                value={config.curbThickness ?? 0.5}
+                onChange={e => updateConfig({ curbThickness: parseFloat(e.target.value) || 0.5 })}
+                style={{ 
+                  fontSize: '1.2rem', 
+                  width: '40px', 
+                  background: 'transparent', 
+                  color: 'var(--text-primary)', 
+                  border: 'none', 
+                  padding: 0, 
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <span style={{fontSize: '1.2rem'}}>ft</span>
+            </div>
+         </div>
+
        </div>
     </div>
   );

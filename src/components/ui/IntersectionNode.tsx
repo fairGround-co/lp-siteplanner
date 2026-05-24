@@ -164,10 +164,19 @@ export function RouteLeg({
             if (cssCorner.includes('left')) posStyle.left = 0; else posStyle.right = 0;
             const ox = cssCorner.includes('left') ? '100%' : '0%';
             const oy = cssCorner.includes('top') ? '100%' : '0%';
-            const cw = px(1.5);
+            const cw = px(config.curbThickness ?? 0.5);
+            
+            // To align fluidly with straight border in adjacent cell, the div must overhang into it by cw
+            const adjustedPos: any = { ...posStyle };
+            if (isHorizontal) {
+               if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
+            } else {
+               if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
+            }
+
             nibbles.push(
               <div key={`nibble-${cssCorner}`} style={{
-                position: 'absolute', ...posStyle,
+                position: 'absolute', ...adjustedPos,
                 width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
                 background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
                 pointerEvents: 'none', zIndex: 2,
@@ -301,7 +310,7 @@ export function IntersectionNode({
   const px = (ft: number) => ft * pxPerFt;
   const N_V = routeV.crossSection.elements.length;
   const N_H = routeH.crossSection.elements.length;
-  const curb = `${px(1.5)}px solid ${getLaneColor('sidewalk')}`;
+  const curb = `${px(config.curbThickness ?? 0.5)}px solid ${getLaneColor('sidewalk')}`;
 
   const firstDriveIndexH = routeH.crossSection.elements.findIndex((el: any) => el.type === 'drive_lane');
   const lastDriveIndexH = [...routeH.crossSection.elements].findLastIndex((el: any) => el.type === 'drive_lane');
@@ -493,7 +502,7 @@ export function IntersectionNode({
             ...(pos.includes('bottom') ? { bottom: 0 } : { top: 0 }),
             ...(pos.includes('right') ? { right: 0 } : { left: 0 }),
             width: `${br}px`, height: `${br}px`,
-            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + px(1.5)}px, ${getLaneColor('parking_lane')} ${br + px(1.5)}px)`,
+            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + px(config.curbThickness ?? 0.5)}px, ${getLaneColor('parking_lane')} ${br + px(config.curbThickness ?? 0.5)}px)`,
             maskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br - 0.2}px, black ${br - 0.2}px)`,
             WebkitMaskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br - 0.2}px, black ${br - 0.2}px)`,
             pointerEvents: 'none',
@@ -536,25 +545,32 @@ export function IntersectionNode({
 
   return (
     <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
-      <div style={{ gridRow: 1, gridColumn: `3 / span ${N_V}` }}>
+      <div style={{ gridRow: 1, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
         <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="top" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
-      <div style={{ gridRow: 2, gridColumn: `3 / span ${N_V}` }}>
+      <div style={{ gridRow: 2, gridColumn: `3 / span ${N_V}`, zIndex: 5 }}>
         <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} sectionType="setback" position="top" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
 
-      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 1 }}>
+      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 1, zIndex: 10 }}>
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="left" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
-      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 2 }}>
+      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 2, zIndex: 5 }}>
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="left" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
 
-      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 3 }}>
+      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 3, zIndex: 5 }}>
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="right" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
-      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 4 }}>
+      <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 4, zIndex: 10 }}>
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="right" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+      </div>
+
+      <div style={{ gridRow: N_H + 3, gridColumn: `3 / span ${N_V}`, zIndex: 5 }}>
+        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} sectionType="setback" position="bottom" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+      </div>
+      <div style={{ gridRow: N_H + 4, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
+        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="bottom" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
 
       {cells}

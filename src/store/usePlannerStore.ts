@@ -83,6 +83,7 @@ export const usePlannerStore = create<PlannerState>()(
       parkingStallLength: 18,
       parkingStallWidth: 7,
       cosmeticCurbRadius: 2,
+      curbThickness: 0.5,
     },
 
     routeClasses: {},
