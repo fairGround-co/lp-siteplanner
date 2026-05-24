@@ -203,28 +203,30 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    const padding = 0; // The bounding logic directly handles outer edges now
-    const fitW = padding + leftRouteW + blockW + rightRouteW + padding;
-    const fitD = padding + topRouteW + blockD + bottomRouteW + padding;
+    const allRouteWidths = Object.values(store.routeClasses).map(rc => getRouteWidth(rc.id));
+    const maxRouteW = allRouteWidths.length > 0 ? Math.max(...allRouteWidths) : 0;
 
-    // Expand to fill container, with 5% margin on each side (10% total)
-    const marginW = containerSize.w * 0.10;
-    const marginH = containerSize.h * 0.10;
+    const fitW = maxRouteW + blockW + maxRouteW;
+    const fitD = maxRouteW + blockD + maxRouteW;
+
+    // 8% total margin (4% on each side) to keep clear space
+    const marginW = containerSize.w * 0.08;
+    const marginH = containerSize.h * 0.08;
     const scale = Math.min((containerSize.w - marginW) / fitW, (containerSize.h - marginH) / fitD, 15);
     const px = (val: number) => val * scale;
 
+    const ext = 1000; // massive extension to bleed off canvas
     const setbackDist = store.config.intersectionDaylightDistance ?? 25;
-    const ext = setbackDist; // Just enough extension to fit the intersection aprons completely, no infinite bleed
 
     const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
     const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
-    // Center the entire visible route+lot bounding box, not just the block itself
-    const boundingCenterX = ext + (leftRouteW + blockW + rightRouteW) / 2;
-    const boundingCenterY = ext + (topRouteW + blockD + bottomRouteW) / 2;
+    // Center the middle of the sample lot block in the middle of the preview container
+    const blockCenterX = ext + leftRouteW + blockW / 2;
+    const blockCenterY = ext + topRouteW + blockD / 2;
     
-    const blockOffsetX = Math.floor(containerSize.w / 2 - px(boundingCenterX));
-    const blockOffsetY = Math.floor(containerSize.h / 2 - px(boundingCenterY));
+    const blockOffsetX = Math.floor(containerSize.w / 2 - px(blockCenterX));
+    const blockOffsetY = Math.floor(containerSize.h / 2 - px(blockCenterY));
 
     // We export these so they can be passed to DrillDownLayout canvasStyle
     const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
