@@ -164,11 +164,12 @@ export function RouteLeg({
             if (cssCorner.includes('left')) posStyle.left = 0; else posStyle.right = 0;
             const ox = cssCorner.includes('left') ? '100%' : '0%';
             const oy = cssCorner.includes('top') ? '100%' : '0%';
+            const cw = px(1.5);
             nibbles.push(
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...posStyle,
-                width: `${cosmeticR}px`, height: `${cosmeticR}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${grassColor} ${cosmeticR}px)`,
+                width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
+                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
@@ -300,7 +301,7 @@ export function IntersectionNode({
   const px = (ft: number) => ft * pxPerFt;
   const N_V = routeV.crossSection.elements.length;
   const N_H = routeH.crossSection.elements.length;
-  const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
+  const curb = `${px(1.5)}px solid ${getLaneColor('sidewalk')}`;
 
   const firstDriveIndexH = routeH.crossSection.elements.findIndex((el: any) => el.type === 'drive_lane');
   const lastDriveIndexH = [...routeH.crossSection.elements].findLastIndex((el: any) => el.type === 'drive_lane');
@@ -443,7 +444,6 @@ export function IntersectionNode({
   const baseRadius = Math.max(curbRadius, pedRadius);
   const stripeRadius = pedRadius;
   const curbColor = getLaneColor('sidewalk');
-  const driveColor = getLaneColor('drive_lane');
   const stripeW = 4; // stop line / stripe width in px
   const stripeColor = 'rgba(255,255,255,0.4)';
 
@@ -493,7 +493,7 @@ export function IntersectionNode({
             ...(pos.includes('bottom') ? { bottom: 0 } : { top: 0 }),
             ...(pos.includes('right') ? { right: 0 } : { left: 0 }),
             width: `${br}px`, height: `${br}px`,
-            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + 0.5}px, ${driveColor} ${br + 0.5}px)`,
+            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + px(1.5)}px, ${getLaneColor('parking_lane')} ${br + px(1.5)}px)`,
             maskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br - 0.2}px, black ${br - 0.2}px)`,
             WebkitMaskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br - 0.2}px, black ${br - 0.2}px)`,
             pointerEvents: 'none',
