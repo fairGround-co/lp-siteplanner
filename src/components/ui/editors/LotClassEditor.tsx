@@ -27,8 +27,8 @@ const CollapsibleSection = ({
       >
         <h3 style={{ margin: 0, border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
           {title}
-          {hasError && <AlertTriangle size={16} color="#ef4444" />}
-          {hasWarning && !hasError && <AlertTriangle size={16} color="#eab308" />}
+          {hasError && <span title={typeof hasError === 'string' ? hasError : "Error"}><AlertTriangle size={16} color="#ef4444" /></span>}
+          {hasWarning && !hasError && <span title={typeof hasWarning === 'string' ? hasWarning : "Warning"}><AlertTriangle size={16} color="#eab308" /></span>}
         </h3>
         <span style={{ transform: isOpen ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.8rem' }}>▼</span>
       </div>
@@ -608,7 +608,7 @@ export function LotClassEditor({ id }: { id?: string }) {
         {saveButtonPortal}
         <h2 style={{margin: '0 0 16px 0', fontSize:'1.2rem'}}>Edit Lot Typology</h2>
 
-      <CollapsibleSection title="General">
+      <div className="inspector-section">
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
           <ColorSwatchPicker 
             label="Display Color"
@@ -623,9 +623,9 @@ export function LotClassEditor({ id }: { id?: string }) {
             <input type="text" value={lot.name} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ name: e.target.value })} />
           </div>
         </div>
-      </CollapsibleSection>
+      </div>
 
-      <CollapsibleSection title="Typical Dimensions (ft)" onMouseEnter={() => setHoveredField('width')} onMouseLeave={() => setHoveredField(null)} hasWarning={lot.targetWidth % gridIncrement !== 0}>
+      <CollapsibleSection title="Typical Dimensions (ft)" onMouseEnter={() => setHoveredField('width')} onMouseLeave={() => setHoveredField(null)} hasWarning={lot.targetWidth % gridIncrement !== 0 ? `Target Width is not divisible by ${gridIncrement}ft grid` : false}>
         <div className="inspector-field">
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
             Target Width
@@ -645,9 +645,10 @@ export function LotClassEditor({ id }: { id?: string }) {
         title="Setbacks (ft)" 
         overridesRef={overridesRef}
         hasWarning={
-          lot.setbacks.front.default % gridIncrement !== 0 || Object.values(lot.setbacks.front.perRouteClass).some(v => v % gridIncrement !== 0) ||
+          (lot.setbacks.front.default % gridIncrement !== 0 || Object.values(lot.setbacks.front.perRouteClass).some(v => v % gridIncrement !== 0) ||
           lot.setbacks.rear.default % gridIncrement !== 0 || Object.values(lot.setbacks.rear.perRouteClass).some(v => v % gridIncrement !== 0) ||
-          lot.setbacks.side.default % gridIncrement !== 0 || Object.values(lot.setbacks.side.perRouteClass).some(v => v % gridIncrement !== 0)
+          lot.setbacks.side.default % gridIncrement !== 0 || Object.values(lot.setbacks.side.perRouteClass).some(v => v % gridIncrement !== 0))
+          ? `One or more setbacks are not divisible by ${gridIncrement}ft grid` : false
         }
       >
         <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '8px' }}>
@@ -743,8 +744,14 @@ export function LotClassEditor({ id }: { id?: string }) {
 
       <CollapsibleSection 
         title="Constraints (ft)" 
-        hasWarning={lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0}
-        hasError={lot.maxDepth < lot.minDepth || lot.maxWidth < lot.minWidth}
+        hasWarning={
+          (lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0) 
+          ? `One or more bounds are not divisible by ${gridIncrement}ft grid` : false
+        }
+        hasError={
+          (lot.maxDepth < lot.minDepth) ? "Max depth cannot be less than min depth" :
+          (lot.maxWidth < lot.minWidth) ? "Max width cannot be less than min width" : false
+        }
       >
         <div style={{ display: 'flex', gap: '8px' }}>
           <div className="inspector-field" style={{ flex: 1 }}>

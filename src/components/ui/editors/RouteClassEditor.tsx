@@ -32,11 +32,11 @@ const CollapsibleSection = ({
       >
         <h3 style={{ margin: 0, border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
           {title}
-          {hasError && <AlertTriangle size={16} color="#ef4444" />}
-          {hasWarning && !hasError && <AlertTriangle size={16} color="#eab308" />}
+          {hasError && <span title={typeof hasError === 'string' ? hasError : "Error"}><AlertTriangle size={16} color="#ef4444" /></span>}
+          {hasWarning && !hasError && <span title={typeof hasWarning === 'string' ? hasWarning : "Warning"}><AlertTriangle size={16} color="#eab308" /></span>}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {headerAction}
+          {isOpen && headerAction}
           <span style={{ transform: isOpen ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.8rem' }}>▼</span>
         </div>
       </div>
@@ -424,7 +424,8 @@ export function RouteClassEditor({ id }: { id?: string }) {
         {saveButtonPortal}
         <h2 style={{margin: '0 0 16px 0', fontSize:'1.2rem'}}>Edit Route Typology</h2>
 
-        <CollapsibleSection title="General">
+        <div className="inspector-section">
+          <h3>General</h3>
           <div className="inspector-field">
             <label>Name</label>
             <input type="text" value={route.name} onChange={e => updateRoute({ name: e.target.value })} />
@@ -440,7 +441,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
             <label>Curb Radius (ft)</label>
             <input type="number" placeholder={`${store.config?.pedestrianCurbRadius ?? 15} (Default)`} value={route.curbRadius ?? ''} onChange={e => updateRoute({ curbRadius: e.target.value ? Number(e.target.value) : undefined })} />
           </div>
-        </CollapsibleSection>
+        </div>
 
       <CollapsibleSection 
         title="Lanes (Left to Right)" 

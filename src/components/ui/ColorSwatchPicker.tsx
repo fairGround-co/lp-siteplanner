@@ -52,7 +52,7 @@ export function ColorSwatchPicker({ label, color, onChange, variant = 'full', hi
 
       {isOpen && (
         <div style={{
-          position: 'absolute', top: '100%', right: variant === 'icon' ? 0 : 'auto', left: variant === 'icon' ? 'auto' : 0, marginTop: '4px', zIndex: 100,
+          position: 'absolute', top: '100%', left: 0, right: 'auto', marginTop: '4px', zIndex: 100,
           background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)',
           padding: '12px', borderRadius: '8px', boxShadow: 'var(--shadow)',
           width: '200px'
