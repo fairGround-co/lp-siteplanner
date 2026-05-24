@@ -147,6 +147,9 @@ export function LotClassEditor({ id }: { id?: string }) {
 
     const topRouteW = getRouteWidth(previewRoutes.top);
     const bottomRouteW = getRouteWidth(previewRoutes.bottom);
+    const leftRouteW = getRouteWidth(previewRoutes.left);
+    const rightRouteW = getRouteWidth(previewRoutes.right);
+
     const padding = 30; // Breathing room outside outer route boundaries for scale fitting
     const fitW = padding + leftRouteW + blockW + rightRouteW + padding;
     const fitD = padding + topRouteW + blockD + bottomRouteW + padding;
@@ -158,6 +161,8 @@ export function LotClassEditor({ id }: { id?: string }) {
     const px = (val: number) => val * scale;
 
     const ext = 1000; // massive extension to bleed off canvas
+    const setbackDist = store.config.intersectionDaylightDistance ?? 25;
+
     const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
     const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
@@ -412,24 +417,24 @@ export function LotClassEditor({ id }: { id?: string }) {
                 </div>
             </div>
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
-               {/* Routes (Legs) */}
-               <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW} rh={topRouteW} t={ext} l={ext + leftRouteW} />
-               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW} rh={bottomRouteW} t={ext + topRouteW + blockD} l={ext + leftRouteW} />
-               <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD} t={ext + topRouteW} l={ext} />
-               <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD} t={ext + topRouteW} l={ext + leftRouteW + blockW} />
+               {/* Routes (Continuous segments between intersections) */}
+               <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW - 2*setbackDist} rh={topRouteW} t={ext} l={ext + leftRouteW + setbackDist} />
+               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW - 2*setbackDist} rh={bottomRouteW} t={ext + topRouteW + blockD} l={ext + leftRouteW + setbackDist} />
+               <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext} />
+               <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext + leftRouteW + blockW} />
 
-               {/* Route Intersections (Corners) */}
+               {/* Route Intersections (Corners only, perfectly sizing out the legs) */}
                <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + blockW/2} h={ext + topRouteW + blockD/2} t={0} l={0} anchorX={ext} anchorY={ext} />
+                 w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={ext} anchorY={ext} />
                  
                <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} 
-                 w={blockW/2 + rightRouteW + ext} h={ext + topRouteW + blockD/2} t={0} l={ext + leftRouteW + blockW/2} anchorX={blockW/2} anchorY={ext} />
+                 w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={ext} />
                  
                <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + blockW/2} h={blockD/2 + bottomRouteW + ext} t={ext + topRouteW + blockD/2} l={0} anchorX={ext} anchorY={blockD/2} />
+                 w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={ext} anchorY={setbackDist} />
                  
                <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} 
-                 w={blockW/2 + rightRouteW + ext} h={blockD/2 + bottomRouteW + ext} t={ext + topRouteW + blockD/2} l={ext + leftRouteW + blockW/2} anchorX={blockW/2} anchorY={blockD/2} />
+                 w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={setbackDist} />
 
                <div style={{ position: 'absolute', top: px(ext + topRouteW), left: px(ext + leftRouteW), width: px(blockW), height: px(blockD) }}>
                   {renderLots()}
