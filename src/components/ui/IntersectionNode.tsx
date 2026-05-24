@@ -1,5 +1,5 @@
 import React from 'react';
-import type { RouteClass, RouteElement, SystemConfig } from '../../types';
+import type { RouteClass, SystemConfig } from '../../types';
 import { getLaneColor, getParkingStripeBackground } from './styleUtils';
 
 export function getLaneDivider(el1: any, el2: any): string {
