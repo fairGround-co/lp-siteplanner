@@ -14,6 +14,7 @@ interface CanvasViewportProps {
   gridSize?: number;
   disablePan?: boolean;
   disableZoom?: boolean;
+  gridOrigin?: { x: number; y: number };
   initialBounds?: {
     w: number;
     h: number;
@@ -31,6 +32,7 @@ export function CanvasViewport({
   gridSize = 10,
   disablePan = false,
   disableZoom = false,
+  gridOrigin,
   initialBounds
 }: CanvasViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,8 +127,10 @@ export function CanvasViewport({
   };
 
   const gridPx = gridSize * scale;
-  const bgOffsetX = offset.x % gridPx;
-  const bgOffsetY = offset.y % gridPx;
+  const originX = gridOrigin ? gridOrigin.x * scale : 0;
+  const originY = gridOrigin ? gridOrigin.y * scale : 0;
+  const bgOffsetX = (offset.x + originX) % gridPx;
+  const bgOffsetY = (offset.y + originY) % gridPx;
 
   return (
     <div 

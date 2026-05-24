@@ -42,6 +42,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
   const gridIncrement = store.config?.baseGridSize || 10;
   const [lot, setLot] = useState<LotClass | null>(null);
+  const [sampleLotsCount, setSampleLotsCount] = useState(5);
   const [activeOverride, setActiveOverride] = useState<'front' | 'rear' | 'side' | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [isHudOpen, setIsHudOpen] = useState(true);
@@ -151,7 +152,7 @@ export function LotClassEditor({ id }: { id?: string }) {
 
   const width = lot.targetWidth || 24;
   const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
-  const blockW = width * 5;
+  const blockW = width * sampleLotsCount;
   const blockD = depth * 2;
 
   const getRouteWidth = (id: string | null) => {
@@ -405,8 +406,18 @@ export function LotClassEditor({ id }: { id?: string }) {
     return (
       <>
          <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ padding: '6px 12px', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 'bold', boxShadow: 'var(--shadow)' }}>
+            <div style={{ padding: '6px 12px', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 'bold', boxShadow: 'var(--shadow)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               Lot Preview
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 'normal' }}>
+                Sample count:
+                <input 
+                  type="number" 
+                  min={1} max={20}
+                  value={sampleLotsCount}
+                  onChange={e => setSampleLotsCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ width: '40px', padding: '2px 4px', background: 'var(--bg-surface)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', borderRadius: '3px' }}
+                />
+              </div>
             </div>
          </div>
 
@@ -746,6 +757,7 @@ export function LotClassEditor({ id }: { id?: string }) {
           disablePan={true}
           disableZoom={true}
           gridSize={store.config?.baseGridSize || 10}
+          gridOrigin={{ x: ext + leftRouteW, y: ext + topRouteW }}
           initialBounds={{
             w: effectiveW,
             h: effectiveD,
