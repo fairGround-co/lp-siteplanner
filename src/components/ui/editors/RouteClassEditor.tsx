@@ -205,10 +205,10 @@ export function RouteClassEditor({ id }: { id?: string }) {
              let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
              
              if (!vehic) {
-                if (prevEl && prevVehic) {
+                if (prevEl && prevVehic && prevEl.type !== 'parking_lane') {
                    if (isHorizontal) bTop = curb; else bLeft = curb;
                 }
-                if (nextEl && nextVehic) {
+                if (nextEl && nextVehic && nextEl.type !== 'parking_lane') {
                    if (isHorizontal) bBottom = curb; else bRight = curb;
                 }
              } else {
@@ -230,23 +230,60 @@ export function RouteClassEditor({ id }: { id?: string }) {
                : ((el as any).displayStyle?.fillColor || bgColor);
 
              let tl = 0, tr = 0, bl = 0, br = 0;
-             const r = px(5);
+             const r = px(2);
+
+             const isMedianH = isHorizontal && el.type === 'lawn_strip' && i > firstDriveIndexH && i < lastDriveIndexH;
+             const isMedianV = !isHorizontal && el.type === 'lawn_strip' && i > firstDriveIndexV && i < lastDriveIndexV;
+             const isMedian = (isMedianH || isMedianV) && effectiveSectionType === 'setback';
 
              if (isPreemptedParking) {
                 if (isHorizontal) {
-                   const isTopParking = i < firstDriveIndexH;
                    if (position === 'left') {
-                      if (isTopParking) br = r; else tr = r;
+                      tl = r; bl = r;
+                      bLeft = curb;
                    } else if (position === 'right') {
-                      if (isTopParking) bl = r; else tl = r;
+                      tr = r; br = r;
+                      bRight = curb;
                    }
                 } else {
-                   const isLeftParking = i < firstDriveIndexV;
                    if (position === 'top') {
-                      if (isLeftParking) br = r; else bl = r;
+                      tl = r; tr = r;
+                      bTop = curb;
+                   }
+                }
+             } else if (isMedian) {
+                if (isHorizontal) {
+                   if (position === 'left') {
+                      const intType = getIntCellType(0, i);
+                      if (intType === 'drive_lane') {
+                         tr = r; br = r;
+                         bRight = curb;
+                      }
+                   } else if (position === 'right') {
+                      const intType = getIntCellType(route.crossSection.elements.length - 1, i);
+                      if (intType === 'drive_lane') {
+                         tl = r; bl = r;
+                         bLeft = curb;
+                      }
+                   }
+                } else {
+                   if (position === 'top') {
+                      const intType = getIntCellType(i, 0);
+                      if (intType === 'drive_lane') {
+                         bl = r; br = r;
+                         bBottom = curb;
+                      }
                    }
                 }
              }
+             
+             let wrapperBg = renderBgColor;
+             if (isMedian || isPreemptedParking) wrapperBg = getLaneColor('drive_lane');
+             
+             let wrapperBgImage = bgImage;
+             if (isMedian || isPreemptedParking) wrapperBgImage = 'none';
+
+             const hasInnerDiv = isMedian || isPreemptedParking;
 
              let arrow = null;
              if (el.type === 'drive_lane' && effectiveSectionType === 'leg') {
@@ -275,23 +312,24 @@ export function RouteClassEditor({ id }: { id?: string }) {
                    width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
                    height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
                    overflow: 'hidden',
-                   backgroundColor: isPreemptedParking ? getLaneColor('drive_lane') : renderBgColor,
-                   backgroundImage: isPreemptedParking ? 'none' : bgImage,
+                   backgroundColor: wrapperBg,
+                   backgroundImage: wrapperBgImage,
                    boxSizing: 'border-box',
                    display: 'flex', flexDirection: isHorizontal ? 'row' : 'column', alignItems: 'center', justifyContent: 'center',
                    cursor: sectionType === 'leg' ? 'grab' : 'default',
                    opacity: draggedIndex === i ? 0.5 : 1,
                    transition: 'all 0.2s ease',
                    position: 'relative',
-                   borderTop: isPreemptedParking ? 'none' : bTop, 
-                   borderBottom: isPreemptedParking ? 'none' : bBottom, 
-                   borderLeft: isPreemptedParking ? 'none' : bLeft, 
-                   borderRight: isPreemptedParking ? 'none' : bRight
+                   borderTop: hasInnerDiv ? 'none' : bTop, 
+                   borderBottom: hasInnerDiv ? 'none' : bBottom, 
+                   borderLeft: hasInnerDiv ? 'none' : bLeft, 
+                   borderRight: hasInnerDiv ? 'none' : bRight
                  }}>
-                  {isPreemptedParking && (
+                  {hasInnerDiv && (
                      <div style={{
                         position: 'absolute', inset: 0,
                         backgroundColor: renderBgColor,
+                        backgroundImage: bgImage,
                         borderTopLeftRadius: tl, borderTopRightRadius: tr,
                         borderBottomLeftRadius: bl, borderBottomRightRadius: br,
                         borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
@@ -349,11 +387,18 @@ export function RouteClassEditor({ id }: { id?: string }) {
           return h_el.type;
        }
        
+       const isInsideDrivingBox = v_i >= firstDriveIndexV && v_i <= lastDriveIndexV && h_i >= firstDriveIndexH && h_i <= lastDriveIndexH;
+
        const has = (t: string) => v_el.type === t || h_el.type === t;
        if (has('sidewalk')) {
           if (has('drive_lane')) return 'crosswalk';
           return 'sidewalk';
        }
+       
+       if (isInsideDrivingBox) {
+          return 'drive_lane';
+       }
+
        if (has('drive_lane')) return 'drive_lane';
        if (has('lawn_strip')) return 'lawn_strip';
        if (has('parking_lane')) {
@@ -464,9 +509,9 @@ export function RouteClassEditor({ id }: { id?: string }) {
              <div style={{
                 position: 'absolute', inset: 0,
                 backgroundImage: `
-                  radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), transparent ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px),
-                  linear-gradient(to top, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
-                  linear-gradient(to left, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
+                  radial-gradient(circle at calc(100% - ${px(stripeRadius)}px) calc(100% - ${px(stripeRadius)}px), transparent calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px),
+                  linear-gradient(to top, rgba(255,255,255,0.4) 4px, transparent 4px),
+                  linear-gradient(to left, rgba(255,255,255,0.4) 4px, transparent 4px),
                   repeating-linear-gradient(45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)
                 `,
                 maskImage: `
@@ -508,9 +553,9 @@ export function RouteClassEditor({ id }: { id?: string }) {
              <div style={{
                 position: 'absolute', inset: 0,
                 backgroundImage: `
-                  radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), transparent ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius - 0.5)}px, rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px),
-                  linear-gradient(to top, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
-                  linear-gradient(to right, rgba(255,255,255,0.4) ${px(0.5)}px, transparent ${px(0.5)}px),
+                  radial-gradient(circle at ${px(stripeRadius)}px calc(100% - ${px(stripeRadius)}px), transparent calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) calc(${px(stripeRadius)}px - 4px), rgba(255,255,255,0.4) ${px(stripeRadius)}px, transparent ${px(stripeRadius)}px),
+                  linear-gradient(to top, rgba(255,255,255,0.4) 4px, transparent 4px),
+                  linear-gradient(to right, rgba(255,255,255,0.4) 4px, transparent 4px),
                   repeating-linear-gradient(-45deg, rgba(255,255,255,0.4), rgba(255,255,255,0.4) 4px, transparent 4px, transparent 12px)
                 `,
                 maskImage: `
@@ -559,13 +604,13 @@ export function RouteClassEditor({ id }: { id?: string }) {
            gridTemplateRows: gridRows,
            filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))'
          }}>
-            <div style={{ gridRow: 1, gridColumn: `3 / span ${N}` }}>{renderCrossSection(false, 'leg')}</div>
+            <div style={{ gridRow: 1, gridColumn: `3 / span ${N}` }}>{renderCrossSection(false, 'leg', 'top')}</div>
             <div style={{ gridRow: 2, gridColumn: `3 / span ${N}` }}>{renderCrossSection(false, 'setback', 'top')}</div>
 
-            <div style={{ gridRow: `3 / span ${N}`, gridColumn: 1 }}>{renderCrossSection(true, 'leg')}</div>
+            <div style={{ gridRow: `3 / span ${N}`, gridColumn: 1 }}>{renderCrossSection(true, 'leg', 'left')}</div>
             <div style={{ gridRow: `3 / span ${N}`, gridColumn: 2 }}>{renderCrossSection(true, 'setback', 'left')}</div>
             <div style={{ gridRow: `3 / span ${N}`, gridColumn: N+3 }}>{renderCrossSection(true, 'setback', 'right')}</div>
-            <div style={{ gridRow: `3 / span ${N}`, gridColumn: N+4 }}>{renderCrossSection(true, 'leg')}</div>
+            <div style={{ gridRow: `3 / span ${N}`, gridColumn: N+4 }}>{renderCrossSection(true, 'leg', 'right')}</div>
             
             {intersectionCells}
          </div>
