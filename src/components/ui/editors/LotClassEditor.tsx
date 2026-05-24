@@ -203,17 +203,13 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    // Find the widest route in the whole catalog — used as a fixed buffer on each side for scale.
-    // This ensures scale is stable as you switch routes and that outer edges always fit.
-    const maxRouteW = Math.max(20, ...Object.values(store.routeClasses).map(rc => getRouteWidth(rc.id)));
-
-    // Scale so that: block + widest-route on all 4 sides fits within container with ~4% margin each side.
-    const fitW = maxRouteW + blockW + maxRouteW;
-    const fitD = maxRouteW + blockD + maxRouteW;
-    const margin = 0.08; // 4% each side
+    // Total visible footprint = block + the selected routes on each side.
+    // Scale so this fits with 5% padding each side (10% total) in the tightest dimension.
+    const visibleW = leftRouteW + blockW + rightRouteW;
+    const visibleD = topRouteW + blockD + bottomRouteW;
     const scale = Math.min(
-      (containerSize.w * (1 - margin)) / fitW,
-      (containerSize.h * (1 - margin)) / fitD,
+      (containerSize.w * 0.90) / visibleW,
+      (containerSize.h * 0.90) / visibleD,
       15
     );
     const px = (val: number) => val * scale;
@@ -224,12 +220,12 @@ export function LotClassEditor({ id }: { id?: string }) {
     const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
     const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
-    // Center the block itself in the container (routes bleed out equally on all sides)
+    // Center the block's geometric center on the canvas center.
     const blockCenterX = ext + leftRouteW + blockW / 2;
     const blockCenterY = ext + topRouteW + blockD / 2;
 
-    const blockOffsetX = Math.floor(containerSize.w / 2 - px(blockCenterX));
-    const blockOffsetY = Math.floor(containerSize.h / 2 - px(blockCenterY));
+    const blockOffsetX = Math.round(containerSize.w / 2 - px(blockCenterX));
+    const blockOffsetY = Math.round(containerSize.h / 2 - px(blockCenterY));
 
     // We export these so they can be passed to DrillDownLayout canvasStyle
     const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
