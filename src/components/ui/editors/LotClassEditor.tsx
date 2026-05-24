@@ -7,6 +7,7 @@ import { DrillDownLayout } from '../DrillDownLayout';
 import { ColorSwatchPicker } from '../ColorSwatchPicker';
 import { RouteLeg, IntersectionNode } from '../IntersectionNode';
 import { ArchitecturalScale } from '../ArchitecturalScale';
+import { CanvasViewport } from './CanvasViewport';
 
 const CollapsibleSection = ({ 
   title, 
@@ -41,19 +42,6 @@ export function LotClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
   const gridIncrement = store.config?.baseGridSize || 10;
   const [lot, setLot] = useState<LotClass | null>(null);
-  const [containerSize, setContainerSize] = useState({ w: 800, h: 800 });
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const obs = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        setContainerSize({ w: entry.contentRect.width, h: entry.contentRect.height });
-      }
-    });
-    obs.observe(containerRef.current);
-    return () => obs.disconnect();
-  }, []);
   const [activeOverride, setActiveOverride] = useState<'front' | 'rear' | 'side' | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [isHudOpen, setIsHudOpen] = useState(true);
@@ -72,7 +60,6 @@ export function LotClassEditor({ id }: { id?: string }) {
   });
   const [activeRouteSelect, setActiveRouteSelect] = useState<'top' | 'bottom' | 'left' | 'right' | null>(null);
 
-  // Initialize routes only once store is loaded
   useEffect(() => {
     const routeIds = Object.keys(store.routeClasses);
     if (routeIds.length > 0 && !previewRoutes.top) {
@@ -162,36 +149,28 @@ export function LotClassEditor({ id }: { id?: string }) {
     });
   };
 
-  // --- CANVAS RENDERER ---
-  const renderCanvas = () => {
-    // block context
+  const renderCanvasContent = (scale: number, offsetX: number, offsetY: number, containerSize: { w: number, h: number }) => {
+    const px = (val: number) => val * scale;
     const width = lot.targetWidth || 24;
     const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
-    
-    // 5 lots wide, 2 lots deep.
     const blockW = width * 5;
     const blockD = depth * 2;
-
-    const getRouteWidth = (routeId: string | null) => {
-      if (!routeId) return 20; // default alley/path width
-      const rc = store.routeClasses[routeId];
+    
+    const getRouteWidth = (id: string | null) => {
+      if (!id) return 20;
+      const rc = store.routeClasses[id];
       if (!rc) return 20;
       let w = 0;
-      const elements = rc.crossSection.elements;
-      for (let i = 0; i < elements.length; i++) {
-        w += elements[i].targetWidth;
-      }
-      for (let i = 0; i < elements.length - 1; i++) {
-        const el = elements[i];
-        const nextEl = elements[i + 1];
-        if (el.type === 'parking_lane' && nextEl.type === 'parking_lane') {
+      for (let i = 0; i < rc.crossSection.elements.length; i++) {
+        const el = rc.crossSection.elements[i];
+        w += el.targetWidth;
+        if (el.type === 'parking_lane' && rc.crossSection.elements[i+1]?.type === 'parking_lane') {
           const angle1 = el.parkingAngle || 0;
-          const angle2 = nextEl.parkingAngle || 0;
+          const angle2 = rc.crossSection.elements[i+1].parkingAngle || 0;
           if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
             const rad = angle1 * Math.PI / 180;
             const stallWidth = store.config.parkingStallWidth || 9;
-            const overlapPx = stallWidth * Math.cos(rad);
-            w -= overlapPx;
+            w -= stallWidth * Math.cos(rad);
           }
         }
       }
@@ -203,42 +182,21 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    // Because we center the BLOCK in the container, not the bounding box,
-    // the distance from the center to the furthest edge is blockW/2 + Math.max(left, right).
-    // To keep both edges within the 5% margin, we must scale against a symmetric "effective" footprint.
-    const effectiveW = blockW + 2 * Math.max(leftRouteW, rightRouteW);
-    const effectiveD = blockD + 2 * Math.max(topRouteW, bottomRouteW);
-    
-    const scale = Math.min(
-      (containerSize.w * 0.90) / effectiveW,
-      (containerSize.h * 0.90) / effectiveD,
-      15
-    );
-    const px = (val: number) => val * scale;
-
-    const ext = 1000; // massive extension to bleed off canvas
+    const ext = 1000;
     const setbackDist = store.config.intersectionDaylightDistance ?? 25;
 
-    const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
-    const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
-
-    // Center the block's geometric center on the canvas center.
     const blockCenterX = ext + leftRouteW + blockW / 2;
     const blockCenterY = ext + topRouteW + blockD / 2;
 
-    const blockOffsetX = Math.round(containerSize.w / 2 - px(blockCenterX));
-    const blockOffsetY = Math.round(containerSize.h / 2 - px(blockCenterY));
+    const blockOffsetX = offsetX - px(blockCenterX);
+    const blockOffsetY = offsetY - px(blockCenterY);
 
-    // We export these so they can be passed to DrillDownLayout canvasStyle
     const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
     const gridOffsetY = blockOffsetY + px(ext + topRouteW);
 
     const gridPx = px(gridIncrement);
-    const scaleIdealLeft = 40;
-    const scaleAlignedLeft = gridOffsetX + Math.ceil((scaleIdealLeft - gridOffsetX) / gridPx) * gridPx;
-    
-    const scaleIdealTop = containerSize.h - 80;
-    const scaleAlignedTop = gridOffsetY + Math.floor((scaleIdealTop - gridOffsetY) / gridPx) * gridPx;
+    const scaleAlignedLeft = gridOffsetX + Math.ceil((40 - gridOffsetX) / gridPx) * gridPx;
+    const scaleAlignedTop = gridOffsetY + Math.floor((containerSize.h - 80 - gridOffsetY) / gridPx) * gridPx;
 
     const evaluateSetbacks = (row: 0 | 1, col: number) => {
        const adjTop = row === 0 ? (previewRoutes.top || 'LOT') : 'LOT';
@@ -380,7 +338,6 @@ export function LotClassEditor({ id }: { id?: string }) {
                boxShadow: hoveredField === 'width' ? 'inset 0 0 0 2px rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(0, 0, 0, 0.3)' : 'inset 0 0 0 1px rgba(0, 0, 0, 0.3)',
                boxSizing: 'border-box'
              }}>
-                {/* Arrow */}
                 <div style={{
                   position: 'absolute', top: arrowTop, left: arrowLeft, width: px(8), height: px(8),
                   transform: `translate(-50%, -50%) rotate(${rot}deg)`,
@@ -390,7 +347,6 @@ export function LotClassEditor({ id }: { id?: string }) {
                   zIndex: 2
                 }} />
 
-                {/* Setbacks */}
                 <div 
                    onClick={() => document.getElementById(`input-${sb.top.type}-default`)?.focus()}
                    onMouseEnter={() => setHoveredField(`${sb.top.type}Setback`)}
@@ -442,176 +398,68 @@ export function LotClassEditor({ id }: { id?: string }) {
        return lots;
     };
 
-    return {
-       gridProps: {
-         backgroundImage: `linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)`,
-         backgroundSize: `${px(gridIncrement)}px ${px(gridIncrement)}px`,
-         backgroundPosition: `${gridOffsetX}px ${gridOffsetY}px`
-       },
-       node: (
-         <div 
-           ref={containerRef}
-           style={{ 
-             width: '100%', height: '100%', boxSizing: 'border-box', position: 'relative', overflow: 'hidden'
-           }}>
-             <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  padding: '6px 12px',
-                  background: 'var(--bg-canvas)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
-                  fontWeight: 'bold',
-                  boxShadow: 'var(--shadow)'
-                }}>
-                  Lot Preview
-                </div>
-             </div>
-
-             {/* Lot Area HUD */}
-             <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{
-                  background: 'var(--bg-canvas)',
-                  border: `2px solid ${(() => {
-                    if (!isHudOpen) return 'var(--border-strong)';
-                    const hasDepthError = lot.maxDepth < lot.minDepth;
-                    const hasWidthError = lot.maxWidth < lot.minWidth;
-                    const hasGridWarn = lot.targetWidth % gridIncrement !== 0 || lot.targetDepth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0 || lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0;
-                    return (hasDepthError || hasWidthError) ? '#ef4444' : hasGridWarn ? '#eab308' : 'var(--border-strong)';
-                  })()}`,
-                  borderRadius: '4px',
-                  color: 'var(--text-primary)',
-                  boxShadow: 'var(--shadow)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  minWidth: isHudOpen ? '200px' : 'auto'
-                }}>
-                  <div 
-                    onClick={() => setIsHudOpen(!isHudOpen)} 
-                    style={{ 
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                      padding: '8px 12px', cursor: 'pointer', borderBottom: isHudOpen ? '1px solid var(--border-subtle)' : 'none'
-                    }}
-                  >
-                    <span style={{ fontWeight: 'bold', fontSize: '0.85rem', marginRight: isHudOpen ? '16px' : '0' }}>Lot Area Stats</span>
-                    <span style={{ transform: isHudOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.7rem' }}>▼</span>
-                  </div>
-                  
-                  {isHudOpen && (
-                    <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
-                         <span>Gross Lot Area</span>
-                         <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                         <span>Dimensions</span>
-                         <span>{width}' x {depth}'</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', paddingTop: '4px', marginBottom: '2px', marginTop: '2px' }}>
-                         <span>Buildable Area</span>
-                         <span>{(() => {
-                            const sb = evaluateSetbacks(0, 2);
-                            const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
-                            const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
-                            return Math.round(bW * bD).toLocaleString() + ' sq ft';
-                         })()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                         <span>Env. Dimensions</span>
-                         <span>{(() => {
-                            const sb = evaluateSetbacks(0, 2);
-                            const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
-                            const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
-                            return `${bW}' x ${bD}'`;
-                         })()}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                         <span>% of Gross Area</span>
-                         <span>{(() => {
-                            const sb = evaluateSetbacks(0, 2);
-                            const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
-                            const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
-                            return Math.round((bW * bD) / (width * depth) * 100);
-                         })()}%</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-             </div>
-
-             {/* Scale Reference Bar */}
-             {(gridPx > 0 && !isNaN(scaleAlignedTop) && !isNaN(scaleAlignedLeft)) && (
-               <ArchitecturalScale 
-                 gridIncrement={gridIncrement} 
-                 gridPx={gridPx} 
-                 alignedTop={scaleAlignedTop} 
-                 alignedLeft={scaleAlignedLeft} 
-               />
-             )}
-             
-            <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
-               {/* Routes (Continuous segments between intersections) */}
-               <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW - 2*setbackDist} rh={topRouteW} t={ext} l={ext + leftRouteW + setbackDist} />
-               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW - 2*setbackDist} rh={bottomRouteW} t={ext + topRouteW + blockD} l={ext + leftRouteW + setbackDist} />
-               <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext} />
-               <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext + leftRouteW + blockW} />
-
-               {/* Route Intersections (Corners only, perfectly sizing out the legs) */}
-               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={ext} anchorY={ext} />
-                 
-               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} 
-                 w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={ext} />
-                 
-               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={ext} anchorY={setbackDist} />
-                 
-               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} 
-                 w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={setbackDist} />
-
-               <div style={{ position: 'absolute', top: px(ext + topRouteW), left: px(ext + leftRouteW), width: px(blockW), height: px(blockD) }}>
-                  {renderLots()}
-               </div>
-
-               {/* Route Selector Popover */}
-               {activeRouteSelect && (
-                  <div style={{
-                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                     background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)',
-                     padding: '16px', borderRadius: '8px', zIndex: 100, boxShadow: 'var(--shadow)',
-                     display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '200px'
-                  }}>
-                     <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: 'var(--text-primary)' }}>Select Route</h3>
-                     <button 
-                       className="secondary-btn" 
-                       onClick={() => { setPreviewRoutes(p => ({ ...p, [activeRouteSelect]: null })); setActiveRouteSelect(null); }}
-                     >
-                       None (Alley / Lot)
-                     </button>
-                     {Object.values(store.routeClasses).map(rc => (
-                       <button 
-                         key={rc.id} 
-                         className="secondary-btn" 
-                         onClick={() => { setPreviewRoutes(p => ({ ...p, [activeRouteSelect]: rc.id })); setActiveRouteSelect(null); }}
-                         style={{ justifyContent: 'flex-start' }}
-                       >
-                         {rc.name}
-                       </button>
-                     ))}
-                     <button 
-                       className="secondary-btn" 
-                       style={{ marginTop: '8px', border: '1px solid var(--border-strong)' }}
-                       onClick={() => setActiveRouteSelect(null)}
-                     >
-                       Cancel
-                     </button>
-                  </div>
-               )}
+    return (
+      <>
+         <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ padding: '6px 12px', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 'bold', boxShadow: 'var(--shadow)' }}>
+              Lot Preview
             </div>
          </div>
-       )
-    };
+
+         <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+            <div style={{ background: 'var(--bg-canvas)', border: `2px solid var(--border-strong)`, borderRadius: '4px', color: 'var(--text-primary)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', minWidth: isHudOpen ? '200px' : 'auto' }}>
+              <div onClick={() => setIsHudOpen(!isHudOpen)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', cursor: 'pointer', borderBottom: isHudOpen ? '1px solid var(--border-subtle)' : 'none' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '0.85rem', marginRight: isHudOpen ? '16px' : '0' }}>Lot Area Stats</span>
+                <span style={{ transform: isHudOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.7rem' }}>▼</span>
+              </div>
+              
+              {isHudOpen && (
+                <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
+                      <span>Gross Lot Area</span>
+                      <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                      <span>Dimensions</span>
+                      <span>{width}' x {depth}'</span>
+                  </div>
+                </div>
+              )}
+            </div>
+         </div>
+
+         {gridPx > 0 && !isNaN(scaleAlignedTop) && !isNaN(scaleAlignedLeft) && (
+           <ArchitecturalScale gridIncrement={gridIncrement} gridPx={gridPx} alignedTop={scaleAlignedTop} alignedLeft={scaleAlignedLeft} />
+         )}
+         
+        <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX }}>
+           <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW - 2*setbackDist} rh={topRouteW} t={ext} l={ext + leftRouteW + setbackDist} />
+           <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW - 2*setbackDist} rh={bottomRouteW} t={ext + topRouteW + blockD} l={ext + leftRouteW + setbackDist} />
+           <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext} />
+           <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext + leftRouteW + blockW} />
+
+           <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={ext} anchorY={ext} />
+           <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={ext} />
+           <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={ext} anchorY={setbackDist} />
+           <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={setbackDist} />
+
+           <div style={{ position: 'absolute', top: px(ext + topRouteW), left: px(ext + leftRouteW), width: px(blockW), height: px(blockD) }}>
+              {renderLots()}
+           </div>
+
+           {activeRouteSelect && (
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', padding: '16px', borderRadius: '8px', zIndex: 100, boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '200px' }}>
+                 <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: 'var(--text-primary)' }}>Select Route</h3>
+                 <button className="secondary-btn" onClick={() => { setPreviewRoutes(p => ({ ...p, [activeRouteSelect]: null })); setActiveRouteSelect(null); }}>None (Alley / Lot)</button>
+                 {Object.values(store.routeClasses).map(rc => (
+                   <button key={rc.id} className="secondary-btn" onClick={() => { setPreviewRoutes(p => ({ ...p, [activeRouteSelect]: rc.id })); setActiveRouteSelect(null); }} style={{ justifyContent: 'flex-start' }}>{rc.name}</button>
+                 ))}
+                 <button className="secondary-btn" style={{ marginTop: '8px', border: '1px solid var(--border-strong)' }} onClick={() => setActiveRouteSelect(null)}>Cancel</button>
+              </div>
+           )}
+        </div>
+      </>
+    );
   };
 
   const renderInspector = () => {
@@ -884,13 +732,27 @@ export function LotClassEditor({ id }: { id?: string }) {
   );
 };
 
-  const canvasContent = renderCanvas();
+  const width = lot.targetWidth || 24;
+  const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
+  const blockW = width * 5;
+  const blockD = depth * 2;
+  
+  // Calculate initial scale to fit
+  const effectiveW = blockW + 2 * 50; // estimate 50ft routes
+  const effectiveD = blockD + 2 * 50;
+  
+  // We'll pass a defaultScale to CanvasViewport, but since it doesn't know container size initially,
+  // we'll just pick a reasonable pxPerFt like 3.
+  const defaultScale = 3;
 
   return (
     <DrillDownLayout 
-      canvas={canvasContent.node}
+      canvas={
+        <CanvasViewport defaultScale={defaultScale} gridSize={store.config?.baseGridSize || 10}>
+          {({ scale, offsetX, offsetY, containerSize }) => renderCanvasContent(scale, offsetX, offsetY, containerSize)}
+        </CanvasViewport>
+      }
       inspector={renderInspector()}
-      canvasStyle={canvasContent.gridProps}
     />
   );
 }
