@@ -364,6 +364,7 @@ export function IntersectionNode({
   anchorX,
   anchorY,
   hideLabels = false,
+  isTIntersection = false,
   ...interactionProps
 }: any) {
   const px = (ft: number) => Math.round(ft * pxPerFt);
@@ -395,6 +396,12 @@ export function IntersectionNode({
     const hType = (hIsOuterParking && isOuterV) ? 'lawn_strip' : h_el.type;
 
     const has = (t: string) => vType === t || hType === t;
+    
+    // T-Intersection far-side logic
+    if (isTIntersection && h_i > lastDriveIndexH) {
+       return h_el.type === 'parking_lane' ? 'lawn_strip' : h_el.type;
+    }
+
     if (has('sidewalk')) {
       if (has('drive_lane')) return 'crosswalk';
       return 'sidewalk';
@@ -636,8 +643,9 @@ export function IntersectionNode({
     return sizes.map(sz => `${sz}px`).join(' ');
   };
 
+  const bottomArm = isTIntersection ? '0px' : '1fr';
   const gridCols = `${leftArm} ${px(setbackDist)}px ${getTrackSizes(routeV.crossSection.elements)} ${px(setbackDist)}px 1fr`;
-  const gridRows = `${topArm} ${px(setbackDist)}px ${getTrackSizes(routeH.crossSection.elements)} ${px(setbackDist)}px 1fr`;
+  const gridRows = `${topArm} ${px(setbackDist)}px ${getTrackSizes(routeH.crossSection.elements)} ${px(setbackDist)}px ${bottomArm}`;
 
   return (
     <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
@@ -662,12 +670,16 @@ export function IntersectionNode({
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="right" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
       </div>
 
-      <div style={{ gridRow: N_H + 3, gridColumn: `3 / span ${N_V}`, zIndex: 5 }}>
-        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} sectionType="setback" position="bottom" config={config} pxPerFt={pxPerFt} {...interactionProps} />
-      </div>
-      <div style={{ gridRow: N_H + 4, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
-        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="bottom" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
-      </div>
+      {!isTIntersection && (
+        <>
+          <div style={{ gridRow: N_H + 3, gridColumn: `3 / span ${N_V}`, zIndex: 5 }}>
+            <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} sectionType="setback" position="bottom" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+          </div>
+          <div style={{ gridRow: N_H + 4, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
+            <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="bottom" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
+          </div>
+        </>
+      )}
 
       {cells}
     </div>

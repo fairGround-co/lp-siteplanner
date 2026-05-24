@@ -99,6 +99,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
     }
   }, [id, store.routeClasses]);
 
+  const [previewType, setPreviewType] = useState<'4-way' | '3-way'>('4-way');
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
   const observer = useRef<ResizeObserver | null>(null);
   const canvasRef = useCallback((el: HTMLDivElement | null) => {
@@ -304,9 +305,16 @@ export function RouteClassEditor({ id }: { id?: string }) {
            </div>
          )}
          
-         <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>
-           Intersection Preview
-         </div>
+        <div style={{position: 'absolute', top: 16, left: 16, zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px', borderRadius: '4px', display: 'flex', gap: '8px', alignItems: 'center'}}>
+          <select 
+            value={previewType} 
+            onChange={e => setPreviewType(e.target.value as '4-way' | '3-way')}
+            style={{background: 'transparent', color: 'white', border: 'none', fontSize: '0.8rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer'}}
+          >
+            <option value="4-way">4-Way Intersection</option>
+            <option value="3-way">3-Way T-Intersection</option>
+          </select>
+        </div>
 
          <IntersectionNode 
             routeH={route} 
@@ -325,6 +333,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
             onMouseLeaveLane={() => setHoveredIndex(null)}
             anchorX={anchorX}
             anchorY={anchorY}
+            isTIntersection={previewType === '3-way'}
          />
 
          {/* Scale Reference Bar */}
