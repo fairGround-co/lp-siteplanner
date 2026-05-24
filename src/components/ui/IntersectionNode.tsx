@@ -50,7 +50,7 @@ export function RouteLeg({
   onMouseEnterLane,
   onMouseLeaveLane,
 }: RouteLegProps) {
-  const px = (ft: number) => ft * pxPerFt;
+  const px = (ft: number) => Math.round(ft * pxPerFt);
   const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
   const grassColor = getLaneColor('lawn_strip');
   const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
@@ -338,7 +338,7 @@ export function IntersectionNode({
   pxPerFt,
   ...interactionProps
 }: any) {
-  const px = (ft: number) => ft * pxPerFt;
+  const px = (ft: number) => Math.round(ft * pxPerFt);
   const N_V = routeV.crossSection.elements.length;
   const N_H = routeH.crossSection.elements.length;
   const curb = `${px(config.curbThickness ?? 0.5)}px solid ${getLaneColor('sidewalk')}`;
@@ -449,6 +449,15 @@ export function IntersectionNode({
         }
       }
 
+      let bgPosX = 0;
+      let bgPosY = 0;
+      if (type === 'crosswalk') {
+        const accumW = routeV.crossSection.elements.slice(0, v_i).reduce((sum, el) => sum + el.targetWidth, 0);
+        const accumH = routeH.crossSection.elements.slice(0, h_i).reduce((sum, el) => sum + el.targetWidth, 0);
+        bgPosX = px(accumW);
+        bgPosY = px(accumH);
+      }
+
       // Add a backing cell behind rounded lawn_strip to prevent grid background bleed
       if (cellRadius) {
         cells.push(
@@ -471,6 +480,7 @@ export function IntersectionNode({
             gridColumn: v_i + 3,
             backgroundColor: bg,
             backgroundImage: bgImage,
+            backgroundPosition: `${-bgPosX}px ${-bgPosY}px`,
             borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
             boxSizing: 'border-box',
             ...(cellRadius ? { borderRadius: cellRadius, position: 'relative' as const, zIndex: 1 } : {}),
@@ -525,7 +535,6 @@ export function IntersectionNode({
 
     const hatch = `repeating-linear-gradient(${hatchAngle}deg, ${apronColor}, ${apronColor} ${stripeW}px, transparent ${stripeW}px, transparent 12px)`;
     const curbThick = px(config.curbThickness ?? 0.5);
-    const maskBr = br - 0.5; // pull mask slightly inward to overlap grass and prevent anti-aliasing gaps
 
     return (
       <div key={key} style={{ gridRow, gridColumn: gridCol, position: 'relative', zIndex: 10 }}>
@@ -536,8 +545,8 @@ export function IntersectionNode({
             ...(pos.includes('bottom') ? { bottom: 0 } : { top: 0 }),
             ...(pos.includes('right') ? { right: 0 } : { left: 0 }),
             width: `${br}px`, height: `${br}px`,
-            maskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${maskBr}px, black ${maskBr + 0.5}px)`,
-            WebkitMaskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${maskBr}px, black ${maskBr + 0.5}px)`,
+            maskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br + 0.5}px, black ${br + 0.5}px)`,
+            WebkitMaskImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br + 0.5}px, black ${br + 0.5}px)`,
             pointerEvents: 'none',
           }}
         >
@@ -555,7 +564,7 @@ export function IntersectionNode({
           {/* 4. Inner curve (curb color) on top of everything */}
           <div style={{
             position: 'absolute', inset: 0,
-            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, ${curbColor} 0px, ${curbColor} ${br + curbThick}px, transparent ${br + curbThick + 0.5}px)`
+            backgroundImage: `radial-gradient(circle at ${maskCircleAt}, transparent ${br}px, ${curbColor} ${br}px, ${curbColor} ${br + curbThick}px, transparent ${br + curbThick}px)`
           }} />
         </div>
       </div>
@@ -582,14 +591,6 @@ export function IntersectionNode({
 
   return (
     <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
-      {/* Background for driving box to hide subpixel gaps */}
-      <div style={{
-        gridRow: `${firstDriveIndexH + 3} / span ${lastDriveIndexH - firstDriveIndexH + 1}`,
-        gridColumn: `${firstDriveIndexV + 3} / span ${lastDriveIndexV - firstDriveIndexV + 1}`,
-        backgroundColor: getLaneColor('drive_lane'),
-        zIndex: 0
-      }} />
-
       <div style={{ gridRow: 1, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
         <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="top" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
