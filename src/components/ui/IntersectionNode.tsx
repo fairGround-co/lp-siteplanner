@@ -68,17 +68,13 @@ export function RouteLeg({
         const isHovered = interactive && hoveredIndex === i && sectionType === 'leg';
         const bgColor = getLaneColor(el.type);
 
-        const isPreemptedParking = el.type === 'parking_lane' && effectiveSectionType === 'setback';
-        const vehic = el.type === 'drive_lane' || (el.type === 'parking_lane' && !isPreemptedParking);
+        const vehic = el.type === 'drive_lane' || el.type === 'parking_lane';
 
         const prevEl = route.crossSection.elements[i - 1];
         const nextEl = route.crossSection.elements[i + 1];
 
-        const prevPreempted = prevEl?.type === 'parking_lane' && effectiveSectionType === 'setback';
-        const nextPreempted = nextEl?.type === 'parking_lane' && effectiveSectionType === 'setback';
-
-        const prevVehic = prevEl ? prevEl.type === 'drive_lane' || (prevEl.type === 'parking_lane' && !prevPreempted) : false;
-        const nextVehic = nextEl ? nextEl.type === 'drive_lane' || (nextEl.type === 'parking_lane' && !nextPreempted) : false;
+        const prevVehic = prevEl ? prevEl.type === 'drive_lane' || prevEl.type === 'parking_lane' : false;
+        const nextVehic = nextEl ? nextEl.type === 'drive_lane' || nextEl.type === 'parking_lane' : false;
 
         const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
 
@@ -108,7 +104,7 @@ export function RouteLeg({
           bgImage = getParkingStripeBackground(i, route.crossSection.elements, !isHorizontal, pLength, pWidth, pxPerFt);
         }
 
-        const renderBgColor = isPreemptedParking ? getLaneColor('lawn_strip') : (el as any).displayStyle?.fillColor || bgColor;
+        const renderBgColor = (el as any).displayStyle?.fillColor || bgColor;
 
         let arrow = null;
         if (el.type === 'drive_lane' && effectiveSectionType === 'leg') {
