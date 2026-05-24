@@ -207,11 +207,11 @@ export function RouteLeg({
           let sbCss = ''; 
           
           if (isHorizontal) {
-            if (position === 'left' && (dir === 'right' || dir === 'both')) { hasStopBar = true; sbCss = 'right'; }
-            if (position === 'right' && (dir === 'left' || dir === 'both')) { hasStopBar = true; sbCss = 'left'; }
+            if (position === 'left' && dir === 'right') { hasStopBar = true; sbCss = 'right'; }
+            if (position === 'right' && dir === 'left') { hasStopBar = true; sbCss = 'left'; }
           } else {
-            if (position === 'top' && (dir === 'left' || dir === 'both')) { hasStopBar = true; sbCss = 'bottom'; }
-            if (position === 'bottom' && (dir === 'right' || dir === 'both')) { hasStopBar = true; sbCss = 'top'; }
+            if (position === 'top' && dir === 'left') { hasStopBar = true; sbCss = 'bottom'; }
+            if (position === 'bottom' && dir === 'right') { hasStopBar = true; sbCss = 'top'; }
           }
           
           if (hasStopBar) {
