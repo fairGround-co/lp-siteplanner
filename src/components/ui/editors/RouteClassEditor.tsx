@@ -311,8 +311,8 @@ export function RouteClassEditor({ id }: { id?: string }) {
             onChange={e => setPreviewType(e.target.value as '4-way' | '3-way')}
             style={{background: 'transparent', color: 'white', border: 'none', fontSize: '0.8rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer'}}
           >
-            <option value="4-way">4-Way Intersection</option>
-            <option value="3-way">3-Way T-Intersection</option>
+            <option value="4-way" style={{ color: 'var(--text-primary)', background: 'var(--bg-canvas)' }}>4-Way Intersection</option>
+            <option value="3-way" style={{ color: 'var(--text-primary)', background: 'var(--bg-canvas)' }}>3-Way T-Intersection</option>
           </select>
         </div>
 

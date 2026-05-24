@@ -28,6 +28,7 @@ interface RouteLegProps {
   pxPerFt: number;
   interactive?: boolean;
   hideLabels?: boolean;
+  omittedEdge?: 'bottom';
   hoveredIndex?: number | null;
   draggedIndex?: number | null;
   onDragStart?: (i: number, isHorizontal: boolean) => void;
@@ -58,6 +59,7 @@ export function RouteLeg({
   onMouseEnterLane,
   onMouseLeaveLane,
   hideLabels = false,
+  omittedEdge,
 }: RouteLegProps) {
   const px = (ft: number) => Math.round(ft * pxPerFt);
   const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
@@ -152,8 +154,11 @@ export function RouteLeg({
         // Rule 2: Nibble on active parking at setback junction (leg)
         let brTL = '0', brTR = '0', brBL = '0', brBR = '0';
         const nibbles: React.ReactNode[] = [];
+        
+        const isBottomEdge = isHorizontal && i > lastDrive;
+        const isOmittedEdge = omittedEdge === 'bottom' && isBottomEdge;
 
-        if (isPreemptedParking && effectiveSectionType === 'setback') {
+        if (isPreemptedParking && effectiveSectionType === 'setback' && !isOmittedEdge) {
           // Rule 1: round the corner facing the leg + adjacent to a drive lane
           const prevIsDrive = prevEl?.type === 'drive_lane';
           const nextIsDrive = nextEl?.type === 'drive_lane';
@@ -172,7 +177,7 @@ export function RouteLeg({
           }
         }
 
-        if (isOuterParking && !isPreemptedParking && effectiveSectionType === 'leg') {
+        if (isOuterParking && !isPreemptedParking && effectiveSectionType === 'leg' && !isOmittedEdge) {
           // Rule 2: Nibble on active parking in leg at setback junction
           // The edge facing the setback gets a grass nibble where adjacent to lawn_strip
           const prevIsLawn = prevEl?.type === 'lawn_strip';
@@ -657,17 +662,17 @@ export function IntersectionNode({
       </div>
 
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 1, zIndex: 10 }}>
-        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="left" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
+        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="left" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} omittedEdge={isTIntersection ? 'bottom' : undefined} {...interactionProps} />
       </div>
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 2, zIndex: 5 }}>
-        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="left" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="left" config={config} pxPerFt={pxPerFt} omittedEdge={isTIntersection ? 'bottom' : undefined} {...interactionProps} />
       </div>
 
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 3, zIndex: 5 }}>
-        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="right" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="right" config={config} pxPerFt={pxPerFt} omittedEdge={isTIntersection ? 'bottom' : undefined} {...interactionProps} />
       </div>
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 4, zIndex: 10 }}>
-        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="right" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
+        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="right" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} omittedEdge={isTIntersection ? 'bottom' : undefined} {...interactionProps} />
       </div>
 
       {!isTIntersection && (
