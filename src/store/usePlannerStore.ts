@@ -82,6 +82,7 @@ export const usePlannerStore = create<PlannerState>()(
       snapToGrid: true,
       parkingStallLength: 18,
       parkingStallWidth: 7,
+      cosmeticCurbRadius: 2,
     },
 
     routeClasses: {},

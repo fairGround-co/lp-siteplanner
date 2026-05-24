@@ -36,7 +36,7 @@ export function RouteLeg({
   oppRoute: _oppRoute,
   isHorizontal,
   sectionType = 'leg',
-  position: _position = 'leg',
+  position = 'leg',
   config,
   pxPerFt,
   interactive = false,
@@ -51,8 +51,14 @@ export function RouteLeg({
   onMouseLeaveLane,
 }: RouteLegProps) {
   const px = (ft: number) => ft * pxPerFt;
+  const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
+  const grassColor = getLaneColor('lawn_strip');
   const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
   const lastDrive = [...route.crossSection.elements].findLastIndex((el) => el.type === 'drive_lane');
+
+  // Which edge faces the setback/intersection?
+  // position='top' → bottom edge; 'left' → right edge; 'right' → left edge; 'bottom' → top edge
+  const setbackEdge = position === 'top' ? 'bottom' : position === 'bottom' ? 'top' : position === 'left' ? 'right' : 'left';
 
   return (
     <div
@@ -98,11 +104,86 @@ export function RouteLeg({
             if (isHorizontal) bBottom = curb;
             else bRight = curb;
           }
+          // Rule 3: Curb line between preempted parking grass and lawn strip
+          if (isPreemptedParking) {
+            if (prevEl?.type === 'lawn_strip') {
+              if (isHorizontal) bTop = curb;
+              else bLeft = curb;
+            }
+            if (nextEl?.type === 'lawn_strip') {
+              if (isHorizontal) bBottom = curb;
+              else bRight = curb;
+            }
+          }
         } else {
           if (prevEl && prevVehic) {
             const divider = getLaneDivider(el, prevEl);
             if (isHorizontal) bTop = divider;
             else bLeft = divider;
+          }
+        }
+
+        // Rule 1: Convex border-radius on preempted parking at drive lane corners (setback)
+        // Rule 2: Nibble on active parking at setback junction (leg)
+        let brTL = '0', brTR = '0', brBL = '0', brBR = '0';
+        const nibbles: React.ReactNode[] = [];
+
+        if (isPreemptedParking && effectiveSectionType === 'setback') {
+          // Rule 1: round the corner facing the intersection + adjacent to a drive lane
+          const prevIsDrive = prevEl?.type === 'drive_lane';
+          const nextIsDrive = nextEl?.type === 'drive_lane';
+          if (isHorizontal) {
+            // horizontal route: prev=above, next=below, setbackEdge is left or right
+            if (prevIsDrive && setbackEdge === 'right') brTR = `${cosmeticR}px`;
+            if (prevIsDrive && setbackEdge === 'left') brTL = `${cosmeticR}px`;
+            if (nextIsDrive && setbackEdge === 'right') brBR = `${cosmeticR}px`;
+            if (nextIsDrive && setbackEdge === 'left') brBL = `${cosmeticR}px`;
+          } else {
+            // vertical route: prev=left, next=right, setbackEdge is top or bottom
+            if (prevIsDrive && setbackEdge === 'bottom') brBL = `${cosmeticR}px`;
+            if (prevIsDrive && setbackEdge === 'top') brTL = `${cosmeticR}px`;
+            if (nextIsDrive && setbackEdge === 'bottom') brBR = `${cosmeticR}px`;
+            if (nextIsDrive && setbackEdge === 'top') brTR = `${cosmeticR}px`;
+          }
+        }
+
+        if (isOuterParking && !isPreemptedParking && effectiveSectionType === 'leg') {
+          // Rule 2: Nibble on active parking in leg at setback junction
+          // The edge facing the setback gets a grass nibble where adjacent to lawn_strip
+          const prevIsLawn = prevEl?.type === 'lawn_strip';
+          const nextIsLawn = nextEl?.type === 'lawn_strip';
+
+          // Determine which CSS corner to nibble based on orientation and position
+          // For isHorizontal=true (H route): prev=above, next=below. setbackEdge = left or right
+          // For isHorizontal=false (V route): prev=left, next=right. setbackEdge = top or bottom
+          const addNibble = (cssCorner: string) => {
+            // cssCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+            // The radial gradient origin is at the corner, transparent inside radius, grass outside
+            const posStyle: any = {};
+            if (cssCorner.includes('top')) posStyle.top = 0; else posStyle.bottom = 0;
+            if (cssCorner.includes('left')) posStyle.left = 0; else posStyle.right = 0;
+            const ox = cssCorner.includes('left') ? '0%' : '100%';
+            const oy = cssCorner.includes('top') ? '0%' : '100%';
+            nibbles.push(
+              <div key={`nibble-${cssCorner}`} style={{
+                position: 'absolute', ...posStyle,
+                width: `${cosmeticR}px`, height: `${cosmeticR}px`,
+                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${grassColor} ${cosmeticR}px)`,
+                pointerEvents: 'none', zIndex: 2,
+              }} />
+            );
+          };
+
+          if (isHorizontal) {
+            if (prevIsLawn && setbackEdge === 'right') addNibble('top-right');
+            if (prevIsLawn && setbackEdge === 'left') addNibble('top-left');
+            if (nextIsLawn && setbackEdge === 'right') addNibble('bottom-right');
+            if (nextIsLawn && setbackEdge === 'left') addNibble('bottom-left');
+          } else {
+            if (prevIsLawn && setbackEdge === 'bottom') addNibble('bottom-left');
+            if (prevIsLawn && setbackEdge === 'top') addNibble('top-left');
+            if (nextIsLawn && setbackEdge === 'bottom') addNibble('bottom-right');
+            if (nextIsLawn && setbackEdge === 'top') addNibble('top-right');
           }
         }
 
@@ -159,7 +240,7 @@ export function RouteLeg({
               flex: `0 0 ${px(el.targetWidth)}px`,
               width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
               height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
-              overflow: 'hidden',
+              overflow: 'visible',
               backgroundColor: renderBgColor,
               backgroundImage: bgImage,
               boxSizing: 'border-box',
@@ -175,6 +256,7 @@ export function RouteLeg({
               borderBottom: bBottom,
               borderLeft: bLeft,
               borderRight: bRight,
+              borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
             }}
           >
             {(!isHorizontal && sectionType === 'leg') && (
@@ -195,6 +277,7 @@ export function RouteLeg({
                 {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
               </div>
             )}
+            {nibbles}
             {isHovered && (
               <div style={{ position: 'absolute', bottom: '40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', color: '#4ade80', fontSize: '0.9rem', width: 'max-content', textAlign: 'center', pointerEvents: 'none', zIndex: 10 }}>
                 Min {el.minWidth}' / Max {el.maxWidth}'
@@ -260,7 +343,15 @@ export function IntersectionNode({
     return 'none';
   };
 
+  const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
+
   const isCellVehic = (t: string) => t === 'drive_lane' || t === 'parking_lane' || t === 'crosswalk';
+
+  // Helper to safely check if a cell at (v, h) is vehicular
+  const isCellVehicAt = (v: number, h: number) => {
+    if (v < 0 || v >= N_V || h < 0 || h >= N_H) return false;
+    return isCellVehic(getIntCellType(v, h));
+  };
 
   const cells: React.ReactNode[] = [];
   routeV.crossSection.elements.forEach((v_el: any, v_i: number) => {
@@ -282,9 +373,9 @@ export function IntersectionNode({
         else tVehic = v_el.type === 'drive_lane';
         if (tVehic) bTop = curb;
 
-        let bVehic = false;
-        if (h_i < N_H - 1) bVehic = isCellVehic(getIntCellType(v_i, h_i + 1));
-        if (bVehic) bBottom = curb;
+        let bVehic2 = false;
+        if (h_i < N_H - 1) bVehic2 = isCellVehic(getIntCellType(v_i, h_i + 1));
+        if (bVehic2) bBottom = curb;
 
         let lVehic = false;
         if (v_i > 0) lVehic = isCellVehic(getIntCellType(v_i - 1, h_i));
@@ -305,6 +396,23 @@ export function IntersectionNode({
         }
       }
 
+      // Rule 4: Convex border-radius on lawn_strip cells where two perpendicular
+      // edge-adjacent cells are vehicular (drive_lane/crosswalk)
+      let cellRadius = '';
+      if (type === 'lawn_strip') {
+        const topV = isCellVehicAt(v_i, h_i - 1);
+        const botV = isCellVehicAt(v_i, h_i + 1);
+        const leftV = isCellVehicAt(v_i - 1, h_i);
+        const rightV = isCellVehicAt(v_i + 1, h_i);
+        const rTL = (topV && leftV) ? `${cosmeticR}px` : '0';
+        const rTR = (topV && rightV) ? `${cosmeticR}px` : '0';
+        const rBR = (botV && rightV) ? `${cosmeticR}px` : '0';
+        const rBL = (botV && leftV) ? `${cosmeticR}px` : '0';
+        if (rTL !== '0' || rTR !== '0' || rBR !== '0' || rBL !== '0') {
+          cellRadius = `${rTL} ${rTR} ${rBR} ${rBL}`;
+        }
+      }
+
       cells.push(
         <div
           key={`int-${v_i}-${h_i}`}
@@ -315,6 +423,7 @@ export function IntersectionNode({
             backgroundImage: bgImage,
             borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
             boxSizing: 'border-box',
+            ...(cellRadius ? { borderRadius: cellRadius } : {}),
           }}
         />
       );

@@ -7,6 +7,7 @@ export interface SystemConfig {
   parkingStallWidth?: number;
   pedestrianCurbRadius?: number;
   intersectionDaylightDistance?: number;
+  cosmeticCurbRadius?: number; // radius for decorative roundovers at intersections (default: 2)
 }
 
 export interface Point {
