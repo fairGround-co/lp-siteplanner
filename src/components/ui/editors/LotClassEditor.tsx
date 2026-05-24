@@ -207,9 +207,9 @@ export function LotClassEditor({ id }: { id?: string }) {
     const fitW = padding + leftRouteW + blockW + rightRouteW + padding;
     const fitD = padding + topRouteW + blockD + bottomRouteW + padding;
 
-    // Expand to fill container, with 5% margin on each side (10% total)
-    const marginW = containerSize.w * 0.10;
-    const marginH = containerSize.h * 0.10;
+    // Expand to fill container, with base margin plus extra to clear the HUD on the right (and left for true center)
+    const marginW = containerSize.w * 0.10 + 450; 
+    const marginH = containerSize.h * 0.10 + 50;
     const scale = Math.min((containerSize.w - marginW) / fitW, (containerSize.h - marginH) / fitD, 15);
     const px = (val: number) => val * scale;
 
@@ -223,10 +223,7 @@ export function LotClassEditor({ id }: { id?: string }) {
     const boundingCenterX = ext + (leftRouteW + blockW + rightRouteW) / 2;
     const boundingCenterY = ext + (topRouteW + blockD + bottomRouteW) / 2;
     
-    // Shift the apparent center left by half the HUD width to visually balance the container
-    const hudShiftPx = isHudOpen ? 120 : 0; 
-    
-    const blockOffsetX = Math.floor(containerSize.w / 2 - px(boundingCenterX) - hudShiftPx);
+    const blockOffsetX = Math.floor(containerSize.w / 2 - px(boundingCenterX));
     const blockOffsetY = Math.floor(containerSize.h / 2 - px(boundingCenterY));
 
     // We export these so they can be passed to DrillDownLayout canvasStyle
