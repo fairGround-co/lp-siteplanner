@@ -203,13 +203,15 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    // Total visible footprint = block + the selected routes on each side.
-    // Scale so this fits with 5% padding each side (10% total) in the tightest dimension.
-    const visibleW = leftRouteW + blockW + rightRouteW;
-    const visibleD = topRouteW + blockD + bottomRouteW;
+    // Because we center the BLOCK in the container, not the bounding box,
+    // the distance from the center to the furthest edge is blockW/2 + Math.max(left, right).
+    // To keep both edges within the 5% margin, we must scale against a symmetric "effective" footprint.
+    const effectiveW = blockW + 2 * Math.max(leftRouteW, rightRouteW);
+    const effectiveD = blockD + 2 * Math.max(topRouteW, bottomRouteW);
+    
     const scale = Math.min(
-      (containerSize.w * 0.90) / visibleW,
-      (containerSize.h * 0.90) / visibleD,
+      (containerSize.w * 0.90) / effectiveW,
+      (containerSize.h * 0.90) / effectiveD,
       15
     );
     const px = (val: number) => val * scale;
