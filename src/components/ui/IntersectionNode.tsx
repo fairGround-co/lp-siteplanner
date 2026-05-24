@@ -336,6 +336,8 @@ export function IntersectionNode({
   routeV,
   config,
   pxPerFt,
+  anchorX,
+  anchorY,
   ...interactionProps
 }: any) {
   const px = (ft: number) => Math.round(ft * pxPerFt);
@@ -586,8 +588,12 @@ export function IntersectionNode({
   cells.push(renderApron('apron-se', apronRowBot, apronColRight, 'top-left'));
 
   const setbackDist = config.intersectionDaylightDistance ?? 25;
-  const gridCols = `1fr ${px(setbackDist)}px ${routeV.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
-  const gridRows = `1fr ${px(setbackDist)}px ${routeH.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
+  
+  const leftArm = anchorX !== undefined ? Math.max(0, anchorX - px(setbackDist)) + 'px' : '1fr';
+  const topArm = anchorY !== undefined ? Math.max(0, anchorY - px(setbackDist)) + 'px' : '1fr';
+  
+  const gridCols = `${leftArm} ${px(setbackDist)}px ${routeV.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
+  const gridRows = `${topArm} ${px(setbackDist)}px ${routeH.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
 
   return (
     <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
