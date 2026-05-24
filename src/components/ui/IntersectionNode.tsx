@@ -452,8 +452,8 @@ export function IntersectionNode({
       let bgPosX = 0;
       let bgPosY = 0;
       if (type === 'crosswalk') {
-        const accumW = routeV.crossSection.elements.slice(0, v_i).reduce((sum, el) => sum + el.targetWidth, 0);
-        const accumH = routeH.crossSection.elements.slice(0, h_i).reduce((sum, el) => sum + el.targetWidth, 0);
+        const accumW = routeV.crossSection.elements.slice(0, v_i).reduce((sum: number, el: any) => sum + el.targetWidth, 0);
+        const accumH = routeH.crossSection.elements.slice(0, h_i).reduce((sum: number, el: any) => sum + el.targetWidth, 0);
         bgPosX = px(accumW);
         bgPosY = px(accumH);
       }
@@ -550,7 +550,7 @@ export function IntersectionNode({
             pointerEvents: 'none',
           }}
         >
-          {/* 1. Background (drivelane color) */}
+          {/* 1. Background */}
           <div style={{ position: 'absolute', inset: 0, backgroundColor: getLaneColor('drive_lane') }} />
           
           {/* 2 & 3. Outer curve + tangents (borders) WITH Striping (hatch) masked inside */}
