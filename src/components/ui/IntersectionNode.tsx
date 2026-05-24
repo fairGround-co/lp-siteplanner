@@ -168,14 +168,15 @@ export function RouteLeg({
             
             // To align fluidly with straight border in adjacent cell, the div must overhang into it by cw
             const adjustedPos: any = { ...posStyle };
-            if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
-            if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
+            // We use calc(-cw + 0.5px) to fix a known browser subpixel rendering offset between borders and absolute positioning
+            if (cssCorner.includes('top')) adjustedPos.top = `calc(-${cw}px + 0.5px)`; else adjustedPos.bottom = `calc(-${cw}px + 0.5px)`;
+            if (cssCorner.includes('left')) adjustedPos.left = `calc(-${cw}px + 0.5px)`; else adjustedPos.right = `calc(-${cw}px + 0.5px)`;
 
             nibbles.push(
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...adjustedPos,
                 width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, ${getLaneColor('parking_lane')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
+                background: `radial-gradient(circle at ${ox} ${oy}, ${getLaneColor('parking_lane')} ${cosmeticR - 0.5}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw + 0.5}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
@@ -213,6 +214,9 @@ export function RouteLeg({
           }
         }
 
+        const hasBorderRadius = brTL !== '0' || brTR !== '0' || brBR !== '0' || brBL !== '0';
+        const baseBgColor = (isPreemptedParking && hasBorderRadius) ? getLaneColor('parking_lane') : renderBgColor;
+
         return (
           <div
             key={el.id}
@@ -248,7 +252,7 @@ export function RouteLeg({
               width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
               height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
               overflow: 'visible',
-              backgroundColor: renderBgColor,
+              backgroundColor: baseBgColor,
               backgroundImage: bgImage,
               boxSizing: 'border-box',
               display: 'flex',
@@ -259,13 +263,26 @@ export function RouteLeg({
               opacity: interactive && draggedIndex === i ? 0.5 : 1,
               transition: 'all 0.2s ease',
               position: 'relative',
-              borderTop: bTop,
-              borderBottom: bBottom,
-              borderLeft: bLeft,
-              borderRight: bRight,
-              borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
+              ...( !(isPreemptedParking && hasBorderRadius) ? {
+                borderTop: bTop,
+                borderBottom: bBottom,
+                borderLeft: bLeft,
+                borderRight: bRight,
+                borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
+              } : {})
             }}
           >
+            {(isPreemptedParking && hasBorderRadius) && (
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: grassColor,
+                borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
+                borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
+                boxSizing: 'border-box',
+                pointerEvents: 'none',
+                zIndex: 0
+              }} />
+            )}
             {(!isHorizontal && sectionType === 'leg') && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
                 {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
