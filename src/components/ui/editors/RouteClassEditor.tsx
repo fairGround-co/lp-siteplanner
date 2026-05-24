@@ -167,66 +167,55 @@ export function RouteClassEditor({ id }: { id?: string }) {
     const isValid = totalWidth % (store.config?.baseGridSize || 12) === 0;
     const statusColor = isValid ? 'var(--color-success)' : 'var(--color-warning)';
     return (
-      <DrillDownLayout 
-        canvasStyle={{ 
-          backgroundSize: `${pxPerGrid}px ${pxPerGrid}px`,
-          backgroundPosition: '120px 120px',
-          alignItems: 'flex-start',
-          justifyContent: 'flex-start'
-        }}
-        canvas={(
-          <div style={{ width: '100%', height: '100%', display: 'flex', boxSizing: 'border-box', padding: '120px', position: 'relative' }}>
-             {/* HUD Report */}
-             <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)' }}>
-                <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
-                <div style={{display: 'flex', alignItems: 'baseline', gap: '8px'}}>
-                  <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold' }}>{totalWidth}'</span>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
-                </div>
-             </div>
-             
-             <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>
-               Intersection Preview
-             </div>
+      <div style={{ width: '100%', height: '100%', display: 'flex', boxSizing: 'border-box', padding: '120px', position: 'relative' }}>
+         {/* HUD Report */}
+         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)' }}>
+            <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
+            <div style={{display: 'flex', alignItems: 'baseline', gap: '8px'}}>
+              <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold' }}>{totalWidth}'</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
+            </div>
+         </div>
+         
+         <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>
+           Intersection Preview
+         </div>
 
-             <IntersectionNode 
-                routeH={route} 
-                routeV={route} 
-                config={store.config} 
-                pxPerFt={pxPerFt} 
-                interactive={true}
-                hoveredIndex={hoveredIndex}
-                draggedIndex={draggedIndex}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnter={handleDragEnter}
-                onDragEnd={() => setDraggedIndex(null)}
-                onClickLane={scrollToLane}
-                onMouseEnterLane={setHoveredIndex}
-                onMouseLeaveLane={() => setHoveredIndex(null)}
-             />
+         <IntersectionNode 
+            routeH={route} 
+            routeV={route} 
+            config={store.config} 
+            pxPerFt={pxPerFt} 
+            interactive={true}
+            hoveredIndex={hoveredIndex}
+            draggedIndex={draggedIndex}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragEnd={() => setDraggedIndex(null)}
+            onClickLane={scrollToLane}
+            onMouseEnterLane={setHoveredIndex}
+            onMouseLeaveLane={() => setHoveredIndex(null)}
+         />
 
-             {/* Scale Reference Bar */}
-             <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
-                  1 Grid Cell = {gridFt}'
-                </span>
-                <div style={{ display: 'flex', border: '1px solid var(--text-primary)', borderTop: 'none', height: '8px', width: `${pxPerGrid * 4}px`, boxSizing: 'border-box' }}>
-                   <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
-                   <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
-                   <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
-                   <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
-                </div>
-                <div style={{ display: 'flex', width: `${pxPerGrid * 4}px`, justifyContent: 'space-between', color: 'var(--text-primary)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
-                   <span>0</span>
-                   <span>{gridFt * 2}'</span>
-                   <span>{gridFt * 4}'</span>
-                </div>
-             </div>
-          </div>
-        )}
-        inspector={renderInspector()}
-      />
+         {/* Scale Reference Bar */}
+         <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+            <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
+              1 Grid Cell = {gridFt}'
+            </span>
+            <div style={{ display: 'flex', border: '1px solid var(--text-primary)', borderTop: 'none', height: '8px', width: `${pxPerGrid * 4}px`, boxSizing: 'border-box' }}>
+               <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
+               <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
+               <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
+               <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
+            </div>
+            <div style={{ display: 'flex', width: `${pxPerGrid * 4}px`, justifyContent: 'space-between', color: 'var(--text-primary)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
+               <span>0</span>
+               <span>{gridFt * 2}'</span>
+               <span>{gridFt * 4}'</span>
+            </div>
+         </div>
+      </div>
     );
   };
 
