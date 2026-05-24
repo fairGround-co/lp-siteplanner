@@ -324,21 +324,29 @@ export function RouteLeg({
                 borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
               }}
             >
-              {(!isHorizontal && sectionType === 'leg' && !hideLabels) && (
+              {(!isHorizontal && sectionType === 'leg') && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
                   {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
-                  <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                    {el.type.replace('_', ' ')}
-                  </span>
+                  {!hideLabels && (
+                    <>
+                      <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                        {el.type.replace('_', ' ')}
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
-              {(isHorizontal && sectionType === 'leg' && !hideLabels) && (
+              {(isHorizontal && sectionType === 'leg') && (
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
-                    {el.type.replace('_', ' ')}
-                  </span>
-                  <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
+                  {!hideLabels && (
+                    <>
+                      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
+                        {el.type.replace('_', ' ')}
+                      </span>
+                      <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
+                    </>
+                  )}
                   {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
                 </div>
               )}
