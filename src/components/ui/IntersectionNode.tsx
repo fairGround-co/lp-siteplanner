@@ -177,7 +177,7 @@ export function RouteLeg({
           }
         }
 
-        if (isOuterParking && !isPreemptedParking && effectiveSectionType === 'leg' && !isOmittedEdge) {
+        if (isOuterParking && !isPreemptedParking && effectiveSectionType === 'leg') {
           // Rule 2: Nibble on active parking in leg at setback junction
           // The edge facing the setback gets a grass nibble where adjacent to lawn_strip
           const prevIsLawn = prevEl?.type === 'lawn_strip';
