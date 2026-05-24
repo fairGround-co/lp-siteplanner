@@ -349,6 +349,22 @@ export function RouteClassEditor({ id }: { id?: string }) {
   };
 
   const renderInspector = () => {
+    const effectiveWidths = [...route.crossSection.elements.map(el => el.targetWidth)];
+    route.crossSection.elements.forEach((el, i) => {
+      const nextEl = route.crossSection.elements[i + 1];
+      if (el.type === 'parking_lane' && nextEl?.type === 'parking_lane') {
+        const angle1 = el.parkingAngle || 0;
+        const angle2 = nextEl.parkingAngle || 0;
+        if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
+          const rad = angle1 * Math.PI / 180;
+          const stallWidth = store.config?.parkingStallWidth || 9;
+          const overlapAmt = stallWidth * Math.cos(rad);
+          effectiveWidths[i] -= overlapAmt / 2;
+          effectiveWidths[i + 1] -= overlapAmt / 2;
+        }
+      }
+    });
+
     const actionsContainer = document.getElementById('editor-header-actions');
     const saveButtonPortal = actionsContainer ? createPortal(
       <button onClick={handleSave} className="action-button" style={{background: '#4ade80', color: '#000', fontWeight: 'bold', border: 'none'}}>Save</button>,
