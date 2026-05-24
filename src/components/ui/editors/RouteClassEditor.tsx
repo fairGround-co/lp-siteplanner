@@ -219,7 +219,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
              }
           }
           
-          const isTwoWay = route.crossSection.trafficFlow === 'two_way' || dirCount.yield > 0 || (dirCount.left > 0 && dirCount.right > 0);
+          const isTwoWay = dirCount.yield > 0 || (dirCount.left > 0 && dirCount.right > 0);
           const angle = Math.abs(el.parkingAngle || 0);
           let minAisle = 20; // Default for two-way
           if (!isTwoWay) {
