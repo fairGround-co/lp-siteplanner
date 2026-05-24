@@ -418,13 +418,31 @@ export function LotClassEditor({ id }: { id?: string }) {
                   }}>
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px' }}>Lot Specifics</h4>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                       <span>Dimensions:</span>
+                       <span>{width}' x {depth}'</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
                        <span>Gross Area:</span>
                        <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                       <span>Buildable Area:</span>
-                       <span>{Math.round(Math.max(0, width - sb.left.dist - sb.right.dist) * Math.max(0, depth - sb.top.dist - sb.bottom.dist)).toLocaleString()} sq ft</span>
-                    </div>
+                    {(() => {
+                      const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                      const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                      const bArea = Math.round(bW * bD);
+                      const pct = Math.round(bArea / (width * depth) * 100) || 0;
+                      return (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                             <span>Buildable Dims:</span>
+                             <span>{bW}' x {bD}'</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                             <span>Buildable Area:</span>
+                             <span>{bArea.toLocaleString()} sq ft ({pct}%)</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                     <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                          <span>Front Setback ({sb.frontEdge}):</span>
@@ -434,14 +452,16 @@ export function LotClassEditor({ id }: { id?: string }) {
                          <span>Rear Setback:</span>
                          <span>{sb[sb.frontEdge === 'top' ? 'bottom' : sb.frontEdge === 'bottom' ? 'top' : sb.frontEdge === 'left' ? 'right' : 'left'].dist}'</span>
                        </div>
-                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                         <span>Side Setback:</span>
-                         <span>{sb[sb.frontEdge === 'top' || sb.frontEdge === 'bottom' ? 'left' : 'top'].dist}'</span>
-                       </div>
-                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                         <span>Side Setback:</span>
-                         <span>{sb[sb.frontEdge === 'top' || sb.frontEdge === 'bottom' ? 'right' : 'bottom'].dist}'</span>
-                       </div>
+                       {(() => {
+                         const side1 = sb[sb.frontEdge === 'top' || sb.frontEdge === 'bottom' ? 'left' : 'top'].dist;
+                         const side2 = sb[sb.frontEdge === 'top' || sb.frontEdge === 'bottom' ? 'right' : 'bottom'].dist;
+                         return (
+                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                             <span>Side Setbacks:</span>
+                             <span>{side1 === side2 ? `${side1}'` : `${side1}' / ${side2}'`}</span>
+                           </div>
+                         );
+                       })()}
                     </div>
                   </div>
                 )}
@@ -483,18 +503,51 @@ export function LotClassEditor({ id }: { id?: string }) {
                 <span style={{ transform: isHudOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.7rem' }}>▼</span>
               </div>
               
-              {isHudOpen && (
-                <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
-                      <span>Gross Lot Area</span>
-                      <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
+              {isHudOpen && (() => {
+                 const typSb = evaluateSetbacks(0, 2);
+                 const typGrossArea = width * depth;
+                 const typBW = Math.max(0, width - typSb.left.dist - typSb.right.dist);
+                 const typBD = Math.max(0, depth - typSb.top.dist - typSb.bottom.dist);
+                 const typBArea = Math.round(typBW * typBD);
+                 const pct = Math.round((typBArea / typGrossArea) * 100) || 0;
+                 const side1 = typSb[typSb.frontEdge === 'top' || typSb.frontEdge === 'bottom' ? 'left' : 'top'].dist;
+                 const side2 = typSb[typSb.frontEdge === 'top' || typSb.frontEdge === 'bottom' ? 'right' : 'bottom'].dist;
+                 
+                 return (
+                  <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                        <span>Lot Dimensions</span>
+                        <span>{width}' x {depth}'</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
+                        <span>Gross Lot Area</span>
+                        <span>{typGrossArea.toLocaleString()} sq ft</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                        <span>Buildable Dims</span>
+                        <span>{typBW}' x {typBD}'</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                        <span>Buildable Area</span>
+                        <span>{typBArea.toLocaleString()} sq ft ({pct}%)</span>
+                    </div>
+                    <div style={{ marginTop: '4px', borderTop: '1px solid var(--border-subtle)', paddingTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Typical Front:</span>
+                         <span>{typSb[typSb.frontEdge].dist}'</span>
+                       </div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Typical Rear:</span>
+                         <span>{typSb[typSb.frontEdge === 'top' ? 'bottom' : typSb.frontEdge === 'bottom' ? 'top' : typSb.frontEdge === 'left' ? 'right' : 'left'].dist}'</span>
+                       </div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Typical Sides:</span>
+                         <span>{side1 === side2 ? `${side1}'` : `${side1}' / ${side2}'`}</span>
+                       </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                      <span>Dimensions</span>
-                      <span>{width}' x {depth}'</span>
-                  </div>
-                </div>
-              )}
+                 );
+              })()}
             </div>
          </div>
 
