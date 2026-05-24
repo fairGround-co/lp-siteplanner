@@ -7,7 +7,7 @@ import { DrillDownLayout } from '../DrillDownLayout';
 import { ColorSwatchPicker } from '../ColorSwatchPicker';
 import { RouteLeg, IntersectionNode } from '../IntersectionNode';
 import { ArchitecturalScale } from '../ArchitecturalScale';
-import { CanvasViewport } from './CanvasViewport';
+import { CanvasViewport } from '../CanvasViewport';
 
 const CollapsibleSection = ({ 
   title, 
@@ -737,10 +737,6 @@ export function LotClassEditor({ id }: { id?: string }) {
   const blockW = width * 5;
   const blockD = depth * 2;
   
-  // Calculate initial scale to fit
-  const effectiveW = blockW + 2 * 50; // estimate 50ft routes
-  const effectiveD = blockD + 2 * 50;
-  
   // We'll pass a defaultScale to CanvasViewport, but since it doesn't know container size initially,
   // we'll just pick a reasonable pxPerFt like 3.
   const defaultScale = 3;
@@ -749,7 +745,7 @@ export function LotClassEditor({ id }: { id?: string }) {
     <DrillDownLayout 
       canvas={
         <CanvasViewport defaultScale={defaultScale} gridSize={store.config?.baseGridSize || 10}>
-          {({ scale, offsetX, offsetY, containerSize }) => renderCanvasContent(scale, offsetX, offsetY, containerSize)}
+          {({ scale, offsetX, offsetY, containerSize }: any) => renderCanvasContent(scale, offsetX, offsetY, containerSize)}
         </CanvasViewport>
       }
       inspector={renderInspector()}

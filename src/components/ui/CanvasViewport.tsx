@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, ReactNode } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 
 interface CanvasViewportProps {
   children: (props: { 
