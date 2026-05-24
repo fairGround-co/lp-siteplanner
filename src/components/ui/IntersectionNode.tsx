@@ -168,8 +168,11 @@ export function RouteLeg({
             
             // To align fluidly with straight border in adjacent cell, the div must overhang into it by cw
             const adjustedPos: any = { ...posStyle };
-            if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
-            if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
+            if (isHorizontal) {
+               if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
+            } else {
+               if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
+            }
 
             nibbles.push(
               <div key={`nibble-${cssCorner}`} style={{
