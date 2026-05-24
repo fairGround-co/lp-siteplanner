@@ -338,17 +338,13 @@ export function RouteClassEditor({ id }: { id?: string }) {
   );
 };
 
-    const gridFt = store.config?.baseGridSize || 12;
     const pxPerGrid = 40;
-    const totalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
-    const gridCells = totalWidth / gridFt;
-    const isOdd = Math.round(gridCells) % 2 !== 0;
 
     return (
       <DrillDownLayout 
         canvasStyle={{ 
           backgroundSize: `${pxPerGrid}px ${pxPerGrid}px`,
-          backgroundPosition: isOdd ? `calc(50% - ${pxPerGrid/2}px) calc(50% - ${pxPerGrid/2}px)` : 'center center'
+          backgroundPosition: 'center center'
         }}
         canvas={renderCanvas()}
         inspector={renderInspector()}
