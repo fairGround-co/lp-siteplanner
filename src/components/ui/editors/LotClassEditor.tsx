@@ -44,6 +44,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   const [lot, setLot] = useState<LotClass | null>(null);
   const [sampleLotsCount, setSampleLotsCount] = useState(5);
   const [isTitlePopupOpen, setIsTitlePopupOpen] = useState(false);
+  const [hoveredLotInfo, setHoveredLotInfo] = useState<{row: number, col: number} | null>(null);
   const [activeOverride, setActiveOverride] = useState<'front' | 'rear' | 'side' | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [isHudOpen, setIsHudOpen] = useState(true);
@@ -337,13 +338,18 @@ export function LotClassEditor({ id }: { id?: string }) {
            else if (sb.frontEdge === 'right') { arrowTop = '50%'; arrowLeft = `${px(width - sb.right.dist)}px`; }
 
            lots.push(
-             <div key={`${row}-${col}`} style={{
-               position: 'absolute', top: px(lTop), left: px(lLeft), width: px(width), height: px(depth),
-               backgroundColor: lot.displayStyle?.fillColor || 'rgba(74, 222, 128, 0.2)',
-               border: 'none',
-               boxShadow: hoveredField === 'width' ? 'inset 0 0 0 2px rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(0, 0, 0, 0.3)' : 'inset 0 0 0 1px rgba(0, 0, 0, 0.3)',
-               boxSizing: 'border-box'
-             }}>
+             <div 
+               key={`${row}-${col}`} 
+               onMouseEnter={() => setHoveredLotInfo({ row, col })}
+               onMouseLeave={() => setHoveredLotInfo(null)}
+               style={{
+                 position: 'absolute', top: px(lTop), left: px(lLeft), width: px(width), height: px(depth),
+                 backgroundColor: lot.displayStyle?.fillColor || 'rgba(74, 222, 128, 0.2)',
+                 border: 'none',
+                 boxShadow: hoveredField === 'width' ? 'inset 0 0 0 2px rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(0, 0, 0, 0.3)' : 'inset 0 0 0 1px rgba(0, 0, 0, 0.3)',
+                 boxSizing: 'border-box'
+               }}
+             >
                 <div style={{
                   position: 'absolute', top: arrowTop, left: arrowLeft, width: px(8), height: px(8),
                   transform: `translate(-50%, -50%) rotate(${rot}deg)`,
@@ -397,6 +403,44 @@ export function LotClassEditor({ id }: { id?: string }) {
                      cursor: 'pointer'
                    }} 
                 />
+                
+                {hoveredLotInfo?.row === row && hoveredLotInfo?.col === col && (
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)',
+                    padding: '12px', borderRadius: '6px', zIndex: 150, boxShadow: 'var(--shadow)',
+                    display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '180px',
+                    color: 'var(--text-primary)', fontSize: '0.8rem', cursor: 'default'
+                  }}>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px' }}>Lot Specifics</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                       <span>Gross Area:</span>
+                       <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                       <span>Buildable Area:</span>
+                       <span>{Math.round(Math.max(0, width - sb.left.dist - sb.right.dist) * Math.max(0, depth - sb.top.dist - sb.bottom.dist)).toLocaleString()} sq ft</span>
+                    </div>
+                    <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Front Setback ({sb.frontEdge}):</span>
+                         <span>{sb[sb.frontEdge].dist}'</span>
+                       </div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Rear Setback:</span>
+                         <span>{sb[sb.frontEdge === 'top' ? 'bottom' : sb.frontEdge === 'bottom' ? 'top' : sb.frontEdge === 'left' ? 'right' : 'left'].dist}'</span>
+                       </div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Side Setback:</span>
+                         <span>{sb[sb.frontEdge === 'top' || sb.frontEdge === 'bottom' ? 'left' : 'top'].dist}'</span>
+                       </div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                         <span>Side Setback:</span>
+                         <span>{sb[sb.frontEdge === 'top' || sb.frontEdge === 'bottom' ? 'right' : 'bottom'].dist}'</span>
+                       </div>
+                    </div>
+                  </div>
+                )}
              </div>
            );
          }
