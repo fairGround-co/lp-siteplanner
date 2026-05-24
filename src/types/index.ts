@@ -87,6 +87,7 @@ export interface LotClass {
   name: string;
   use: 'residential' | 'commercial' | 'green_space' | 'civic';
   targetWidth: number; // Absolute map units (e.g., 24)
+  targetDepth: number;
   minWidth: number;
   maxWidth: number;
   minDepth: number;

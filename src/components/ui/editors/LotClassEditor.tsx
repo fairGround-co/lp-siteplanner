@@ -104,6 +104,7 @@ export function LotClassEditor({ id }: { id?: string }) {
         name: 'New Lot Typology',
         use: 'residential',
         targetWidth: 24,
+        targetDepth: 100,
         minWidth: 16,
         maxWidth: 36,
         minDepth: 80,
@@ -470,10 +471,8 @@ export function LotClassEditor({ id }: { id?: string }) {
                   border: `2px solid ${(() => {
                     const hasDepthError = lot.maxDepth < lot.minDepth;
                     const hasWidthError = lot.maxWidth < lot.minWidth;
-                    const hasGridWarn = lot.targetWidth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0 || lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0;
-                    const checkSetbacks = (sb: any) => sb.default % gridIncrement !== 0 || Object.values(sb.perRouteClass).some((v: any) => v % gridIncrement !== 0);
-                    const hasSetbackWarn = checkSetbacks(lot.setbacks.front) || checkSetbacks(lot.setbacks.rear) || checkSetbacks(lot.setbacks.side);
-                    return (hasDepthError || hasWidthError) ? '#ef4444' : (hasGridWarn || hasSetbackWarn) ? '#eab308' : 'var(--border-strong)';
+                    const hasGridWarn = lot.targetWidth % gridIncrement !== 0 || lot.targetDepth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0 || lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0;
+                    return (hasDepthError || hasWidthError) ? '#ef4444' : hasGridWarn ? '#eab308' : 'var(--border-strong)';
                   })()}`,
                   borderRadius: '4px',
                   color: 'var(--text-primary)',
@@ -625,31 +624,49 @@ export function LotClassEditor({ id }: { id?: string }) {
         </div>
       </div>
 
-      <CollapsibleSection title="Typical Dimensions (ft)" onMouseEnter={() => setHoveredField('width')} onMouseLeave={() => setHoveredField(null)} hasWarning={lot.targetWidth % gridIncrement !== 0 ? `Target Width is not divisible by ${gridIncrement}ft grid` : false}>
-        <div className="inspector-field">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
-            Target Width
-            {lot.targetWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
-          </label>
-          <input 
-            type="number" 
-            value={lot.targetWidth} 
-            onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} 
-            onChange={e => updateLot({ targetWidth: Number(e.target.value) })} 
-            style={{ borderColor: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}
-          />
+      <CollapsibleSection 
+        title="Typical Dimensions (ft)" 
+        onMouseEnter={() => setHoveredField('width')} 
+        onMouseLeave={() => setHoveredField(null)} 
+        hasWarning={
+          lot.targetWidth % gridIncrement !== 0 ? `Target Width is not divisible by ${gridIncrement}ft grid` : 
+          lot.targetDepth % gridIncrement !== 0 ? `Target Depth is not divisible by ${gridIncrement}ft grid` : 
+          false
+        }
+      >
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="inspector-field" style={{ flex: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
+              Target Width
+              {lot.targetWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
+            </label>
+            <input 
+              type="number" 
+              value={lot.targetWidth} 
+              onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} 
+              onChange={e => updateLot({ targetWidth: Number(e.target.value) })} 
+              style={{ borderColor: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}
+            />
+          </div>
+          <div className="inspector-field" style={{ flex: 1 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.targetDepth % gridIncrement !== 0 ? '#eab308' : undefined }}>
+              Target Depth
+              {lot.targetDepth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
+            </label>
+            <input 
+              type="number" 
+              value={lot.targetDepth ?? 100} 
+              onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} 
+              onChange={e => updateLot({ targetDepth: Number(e.target.value) })} 
+              style={{ borderColor: lot.targetDepth % gridIncrement !== 0 ? '#eab308' : undefined }}
+            />
+          </div>
         </div>
       </CollapsibleSection>
 
       <CollapsibleSection 
         title="Setbacks (ft)" 
         overridesRef={overridesRef}
-        hasWarning={
-          (lot.setbacks.front.default % gridIncrement !== 0 || Object.values(lot.setbacks.front.perRouteClass).some(v => v % gridIncrement !== 0) ||
-          lot.setbacks.rear.default % gridIncrement !== 0 || Object.values(lot.setbacks.rear.perRouteClass).some(v => v % gridIncrement !== 0) ||
-          lot.setbacks.side.default % gridIncrement !== 0 || Object.values(lot.setbacks.side.perRouteClass).some(v => v % gridIncrement !== 0))
-          ? `One or more setbacks are not divisible by ${gridIncrement}ft grid` : false
-        }
       >
         <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '8px' }}>
           <div className="inspector-field" style={{ flex: 1, marginBottom: 0 }} onMouseEnter={() => setHoveredField('frontSetback')} onMouseLeave={() => setHoveredField(null)}>
@@ -745,12 +762,14 @@ export function LotClassEditor({ id }: { id?: string }) {
       <CollapsibleSection 
         title="Constraints (ft)" 
         hasWarning={
-          (lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0) 
-          ? `One or more bounds are not divisible by ${gridIncrement}ft grid` : false
+          (lot.minWidth % gridIncrement !== 0) ? `Min Width is not divisible by ${gridIncrement}ft grid` :
+          (lot.maxWidth % gridIncrement !== 0) ? `Max Width is not divisible by ${gridIncrement}ft grid` :
+          (lot.minDepth % gridIncrement !== 0) ? `Min Depth is not divisible by ${gridIncrement}ft grid` :
+          (lot.maxDepth % gridIncrement !== 0) ? `Max Depth is not divisible by ${gridIncrement}ft grid` : false
         }
         hasError={
-          (lot.maxDepth < lot.minDepth) ? "Max depth cannot be less than min depth" :
-          (lot.maxWidth < lot.minWidth) ? "Max width cannot be less than min width" : false
+          (lot.maxWidth < lot.minWidth) ? "Max Width cannot be less than Min Width" :
+          (lot.maxDepth < lot.minDepth) ? "Max Depth cannot be less than Min Depth" : false
         }
       >
         <div style={{ display: 'flex', gap: '8px' }}>
