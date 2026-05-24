@@ -91,7 +91,8 @@ export function RouteLeg({
         const prevVehic = prevEl ? prevEl.type === 'drive_lane' || (prevEl.type === 'parking_lane' && !prevPreempted) : false;
         const nextVehic = nextEl ? nextEl.type === 'drive_lane' || (nextEl.type === 'parking_lane' && !nextPreempted) : false;
 
-        const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
+        const curbWidthPx = px(config.curbThickness ?? 0.5);
+        const curb = `${curbWidthPx}px solid ${getLaneColor('sidewalk')}`;
 
         let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
 
