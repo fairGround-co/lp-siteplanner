@@ -207,9 +207,9 @@ export function LotClassEditor({ id }: { id?: string }) {
     const fitW = padding + leftRouteW + blockW + rightRouteW + padding;
     const fitD = padding + topRouteW + blockD + bottomRouteW + padding;
 
-    // Expand to fill container, with base margin plus extra to clear the HUD on the right (and left for true center)
-    const marginW = containerSize.w * 0.10 + 450; 
-    const marginH = containerSize.h * 0.10 + 50;
+    // Expand to fill container, with 5% margin on each side (10% total)
+    const marginW = containerSize.w * 0.10;
+    const marginH = containerSize.h * 0.10;
     const scale = Math.min((containerSize.w - marginW) / fitW, (containerSize.h - marginH) / fitD, 15);
     const px = (val: number) => val * scale;
 
@@ -373,8 +373,8 @@ export function LotClassEditor({ id }: { id?: string }) {
              <div key={`${row}-${col}`} style={{
                position: 'absolute', top: px(lTop), left: px(lLeft), width: px(width), height: px(depth),
                backgroundColor: lot.displayStyle?.fillColor || 'rgba(74, 222, 128, 0.2)',
-               border: `1px solid ${lot.displayStyle?.strokeColor || 'var(--border-strong)'}`,
-               boxShadow: hoveredField === 'width' ? 'inset 0 0 0 2px rgba(255, 255, 255, 0.5)' : 'none',
+               border: 'none',
+               boxShadow: hoveredField === 'width' ? 'inset 0 0 0 2px rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(0, 0, 0, 0.3)' : 'inset 0 0 0 1px rgba(0, 0, 0, 0.3)',
                boxSizing: 'border-box'
              }}>
                 {/* Arrow */}
