@@ -55,15 +55,15 @@ export function getParkingStripeBackground(
   if (!isVertical) {
     baseHeading = flowDir === 'right' ? 90 : 270;
   } else {
-    baseHeading = flowDir === 'right' ? 180 : 0;
+    // In vertical routes, 'right' means UP (0 deg), 'left' means DOWN (180 deg)
+    baseHeading = flowDir === 'right' ? 0 : 180;
   }
   
-  let turnDir = 1;
-  if (!isVertical) {
-    turnDir = isAboveDrive ? -1 : 1;
-  } else {
-    turnDir = isAboveDrive ? 1 : -1;
-  }
+  // For both horizontal and vertical:
+  // If parking is 'above' (Top or Left), and you're driving forward (Right or Up),
+  // the parking is on your left, so you turn left (-1).
+  // If parking is 'below' (Bottom or Right), you turn right (1).
+  let turnDir = isAboveDrive ? -1 : 1;
   if (flowDir === 'left') turnDir *= -1;
 
   const carAngle = baseHeading + turnDir * angle;
