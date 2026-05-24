@@ -416,7 +416,7 @@ export function LotClassEditor({ id }: { id?: string }) {
            style={{ 
              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden'
            }}>
-            <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
                   padding: '6px 12px',
                   background: 'var(--bg-canvas)',
@@ -429,15 +429,62 @@ export function LotClassEditor({ id }: { id?: string }) {
                 }}>
                   Lot Preview
                 </div>
-            </div>
-            
-            {/* Scale Reference Bar */}
-            <ArchitecturalScale 
-              gridIncrement={gridIncrement} 
-              gridPx={px(gridIncrement)} 
-              alignedTop={scaleAlignedTop} 
-              alignedLeft={scaleAlignedLeft} 
-            />
+             </div>
+
+             {/* Lot Area HUD */}
+             <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{
+                  padding: '8px 12px',
+                  background: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: '4px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
+                  boxShadow: 'var(--shadow)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  minWidth: '200px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
+                     <span>Gross Lot Area</span>
+                     <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                     <span>Dimensions</span>
+                     <span>{width}' x {depth}'</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', paddingTop: '4px', marginBottom: '2px', marginTop: '2px' }}>
+                     <span>Buildable Area</span>
+                     <span>{(() => {
+                        const sb = evaluateSetbacks(0, 2);
+                        const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                        const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                        return Math.round(bW * bD).toLocaleString() + ' sq ft';
+                     })()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                     <span>Env. Dimensions</span>
+                     <span>{(() => {
+                        const sb = evaluateSetbacks(0, 2);
+                        const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                        const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                        return `${bW}' x ${bD}'`;
+                     })()}</span>
+                  </div>
+                </div>
+             </div>
+
+             {/* Scale Reference Bar */}
+             {(gridPx > 0 && !isNaN(scaleAlignedTop) && !isNaN(scaleAlignedLeft)) && (
+               <ArchitecturalScale 
+                 gridIncrement={gridIncrement} 
+                 gridPx={gridPx} 
+                 alignedTop={scaleAlignedTop} 
+                 alignedLeft={scaleAlignedLeft} 
+               />
+             )}
+             
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
                {/* Routes (Continuous segments between intersections) */}
                <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW - 2*setbackDist} rh={topRouteW} t={ext} l={ext + leftRouteW + setbackDist} />
