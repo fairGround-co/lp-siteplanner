@@ -200,6 +200,27 @@ export function RouteLeg({
           const pWidth = config.parkingStallWidth || 7;
           bgImage = getParkingStripeBackground(i, route.crossSection.elements, !isHorizontal, pLength, pWidth, pxPerFt);
         }
+        
+        if (el.type === 'drive_lane' && effectiveSectionType === 'setback') {
+          const dir = el.direction || 'right';
+          let hasStopBar = false;
+          let sbCss = ''; 
+          
+          if (isHorizontal) {
+            if (position === 'left' && (dir === 'right' || dir === 'both')) { hasStopBar = true; sbCss = 'right'; }
+            if (position === 'right' && (dir === 'left' || dir === 'both')) { hasStopBar = true; sbCss = 'left'; }
+          } else {
+            if (position === 'top' && (dir === 'left' || dir === 'both')) { hasStopBar = true; sbCss = 'bottom'; }
+            if (position === 'bottom' && (dir === 'right' || dir === 'both')) { hasStopBar = true; sbCss = 'top'; }
+          }
+          
+          if (hasStopBar) {
+            const stopBarW = 6;
+            const stopBarColor = 'rgba(255,255,255,0.9)';
+            const toSide = sbCss === 'right' ? 'left' : sbCss === 'left' ? 'right' : sbCss === 'top' ? 'bottom' : 'top';
+            bgImage = `linear-gradient(to ${toSide}, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px)`;
+          }
+        }
 
         const renderBgColor = isPreemptedParking ? getLaneColor('lawn_strip') : (el as any).displayStyle?.fillColor || bgColor;
 
@@ -376,39 +397,8 @@ export function IntersectionNode({
       let bgImage = 'none';
       if (type === 'crosswalk') {
         const isVertDrive = v_el.type === 'drive_lane';
-        const isHorizDrive = h_el.type === 'drive_lane';
-        
-        let stopBarBackground = '';
-        const stopBarW = 6;
         const stripeColor = 'rgba(255,255,255,0.7)';
-        const stopBarColor = 'rgba(255,255,255,0.9)';
-        
-        if (isVertDrive) {
-           const dir = v_el.direction || 'right'; // 'right' = UP, 'left' = DOWN
-           const isBottomCrosswalk = h_i > lastDriveIndexH;
-           const isTopCrosswalk = h_i < firstDriveIndexH;
-           
-           if ((dir === 'right' || dir === 'both') && isBottomCrosswalk) {
-              stopBarBackground += `linear-gradient(to top, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
-           }
-           if ((dir === 'left' || dir === 'both') && isTopCrosswalk) {
-              stopBarBackground += `linear-gradient(to bottom, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
-           }
-        } else if (isHorizDrive) {
-           const dir = h_el.direction || 'right'; // 'right' = RIGHT, 'left' = LEFT
-           const isRightCrosswalk = v_i > lastDriveIndexV;
-           const isLeftCrosswalk = v_i < firstDriveIndexV;
-           
-           if ((dir === 'right' || dir === 'both') && isLeftCrosswalk) {
-              stopBarBackground += `linear-gradient(to right, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
-           }
-           if ((dir === 'left' || dir === 'both') && isRightCrosswalk) {
-              stopBarBackground += `linear-gradient(to left, ${stopBarColor} ${stopBarW}px, transparent ${stopBarW}px), `;
-           }
-        }
-        
-        const stripes = `repeating-linear-gradient(${isVertDrive ? '90deg' : '0deg'}, transparent, transparent 6px, ${stripeColor} 6px, ${stripeColor} 14px)`;
-        bgImage = `${stopBarBackground}${stripes}`;
+        bgImage = `repeating-linear-gradient(${isVertDrive ? '90deg' : '0deg'}, transparent, transparent 6px, ${stripeColor} 6px, ${stripeColor} 14px)`;
       }
 
       let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
@@ -496,8 +486,7 @@ export function IntersectionNode({
   const stripeRadius = pedRadius;
   const curbColor = getLaneColor('sidewalk');
   const stripeW = 4; // stop line / stripe width in px
-  const hatchStripeColor = 'rgba(255,255,255,0.3)';
-  const solidStripeColor = 'rgba(255,255,255,0.85)';
+  const apronColor = '#d1d5db'; // solid gray matching both stripes and border
 
   const renderApron = (key: string, gridRow: number, gridCol: number, pos: string) => {
     const sr = px(stripeRadius);
@@ -511,30 +500,30 @@ export function IntersectionNode({
     if (pos === 'bottom-right') {
       maskCircleAt = '0% 0%';
       bRadius = `0 0 ${sr}px 0`;
-      bBottom = `${stripeW}px solid ${solidStripeColor}`;
-      bRight = `${stripeW}px solid ${solidStripeColor}`;
+      bBottom = `${stripeW}px solid ${apronColor}`;
+      bRight = `${stripeW}px solid ${apronColor}`;
       hatchAngle = 45;
     } else if (pos === 'bottom-left') {
       maskCircleAt = '100% 0%';
       bRadius = `0 0 0 ${sr}px`;
-      bBottom = `${stripeW}px solid ${solidStripeColor}`;
-      bLeft = `${stripeW}px solid ${solidStripeColor}`;
+      bBottom = `${stripeW}px solid ${apronColor}`;
+      bLeft = `${stripeW}px solid ${apronColor}`;
       hatchAngle = -45;
     } else if (pos === 'top-right') {
       maskCircleAt = '0% 100%';
       bRadius = `0 ${sr}px 0 0`;
-      bTop = `${stripeW}px solid ${solidStripeColor}`;
-      bRight = `${stripeW}px solid ${solidStripeColor}`;
+      bTop = `${stripeW}px solid ${apronColor}`;
+      bRight = `${stripeW}px solid ${apronColor}`;
       hatchAngle = -45;
     } else if (pos === 'top-left') {
       maskCircleAt = '100% 100%';
       bRadius = `${sr}px 0 0 0`;
-      bTop = `${stripeW}px solid ${solidStripeColor}`;
-      bLeft = `${stripeW}px solid ${solidStripeColor}`;
+      bTop = `${stripeW}px solid ${apronColor}`;
+      bLeft = `${stripeW}px solid ${apronColor}`;
       hatchAngle = 45;
     }
 
-    const hatch = `repeating-linear-gradient(${hatchAngle}deg, ${hatchStripeColor}, ${hatchStripeColor} ${stripeW}px, transparent ${stripeW}px, transparent 12px)`;
+    const hatch = `repeating-linear-gradient(${hatchAngle}deg, ${apronColor}, ${apronColor} ${stripeW}px, transparent ${stripeW}px, transparent 12px)`;
     const curbThick = px(config.curbThickness ?? 0.5);
 
     return (
@@ -554,12 +543,10 @@ export function IntersectionNode({
           {/* 1. Background (drivelane color) */}
           <div style={{ position: 'absolute', inset: 0, backgroundColor: getLaneColor('drive_lane') }} />
           
-          {/* 2. Striping (hatch) */}
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: hatch }} />
-          
-          {/* 3. Outer curve + tangents (borders without transparency) */}
+          {/* 2 & 3. Outer curve + tangents (borders) WITH Striping (hatch) masked inside */}
           <div style={{
             position: 'absolute', inset: 0,
+            backgroundImage: hatch,
             borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
             borderRadius: bRadius, boxSizing: 'border-box'
           }} />
