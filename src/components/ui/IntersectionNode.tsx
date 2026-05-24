@@ -33,10 +33,10 @@ interface RouteLegProps {
 
 export function RouteLeg({
   route,
-  oppRoute,
+  oppRoute: _oppRoute,
   isHorizontal,
   sectionType = 'leg',
-  position = 'leg',
+  position: _position = 'leg',
   config,
   pxPerFt,
   interactive = false,
@@ -51,37 +51,7 @@ export function RouteLeg({
   onMouseLeaveLane,
 }: RouteLegProps) {
   const px = (ft: number) => ft * pxPerFt;
-  const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
-  const lastDrive = [...route.crossSection.elements].findLastIndex((el) => el.type === 'drive_lane');
 
-  const oppFirstDrive = oppRoute ? oppRoute.crossSection.elements.findIndex((el) => el.type === 'drive_lane') : -1;
-  const oppLastDrive = oppRoute ? [...oppRoute.crossSection.elements].findLastIndex((el) => el.type === 'drive_lane') : -1;
-
-  const getIntCellType = (idxLine: number, idxCross: number) => {
-    if (!oppRoute) return 'none';
-    const lineEl = route.crossSection.elements[idxLine];
-    const crossEl = oppRoute.crossSection.elements[idxCross];
-    if (!lineEl || !crossEl) return 'none';
-
-    const has = (t: string) => lineEl.type === t || crossEl.type === t;
-    if (has('sidewalk')) {
-      if (has('drive_lane')) return 'crosswalk';
-      return 'sidewalk';
-    }
-
-    const isInsideDrivingBox =
-      idxLine >= firstDrive && idxLine <= lastDrive && idxCross >= oppFirstDrive && idxCross <= oppLastDrive;
-
-    if (isInsideDrivingBox) return 'drive_lane';
-
-    if (has('drive_lane')) return 'drive_lane';
-    if (has('lawn_strip')) return 'lawn_strip';
-    if (has('parking_lane')) {
-      if (lineEl.type === 'parking_lane' && crossEl.type === 'parking_lane') return 'lawn_strip';
-      return 'drive_lane';
-    }
-    return 'none';
-  };
 
   return (
     <div
@@ -140,96 +110,6 @@ export function RouteLeg({
 
         const renderBgColor = isPreemptedParking ? getLaneColor('lawn_strip') : (el as any).displayStyle?.fillColor || bgColor;
 
-        let tl = 0, tr = 0, bl = 0, br = 0;
-        let maskImage = 'none';
-        const r = px(2);
-
-        const isMedian = el.type === 'lawn_strip' && i > firstDrive && i < lastDrive && effectiveSectionType === 'setback';
-
-        if (isPreemptedParking) {
-          // Only round the corner(s) adjacent to the active vehicular lane,
-          // NOT the corner adjacent to sidewalk/lawn strip.
-          // prevVehic = the neighbor closer to element index 0 is vehicular
-          // nextVehic = the neighbor closer to end of array is vehicular
-          if (isHorizontal) {
-            // Horizontal RouteLeg: elements stack top-to-bottom.
-            // "prev" (top neighbor) and "next" (bottom neighbor)
-            if (position === 'left') {
-              // The rounding edge faces right (toward intersection).
-              // Only round top-right if prev is vehicular, bottom-right if next is vehicular.
-              const masks: string[] = [];
-              if (prevVehic) masks.push(`radial-gradient(circle at 100% 0%, transparent ${r}px, black ${r}px)`);
-              if (nextVehic) masks.push(`radial-gradient(circle at 100% 100%, transparent ${r}px, black ${r}px)`);
-              if (masks.length > 0) {
-                maskImage = masks.join(', ');
-              }
-              bLeft = curb;
-            } else if (position === 'right') {
-              const masks: string[] = [];
-              if (prevVehic) masks.push(`radial-gradient(circle at 0% 0%, transparent ${r}px, black ${r}px)`);
-              if (nextVehic) masks.push(`radial-gradient(circle at 0% 100%, transparent ${r}px, black ${r}px)`);
-              if (masks.length > 0) {
-                maskImage = masks.join(', ');
-              }
-              bRight = curb;
-            }
-          } else {
-            // Vertical RouteLeg: elements stack left-to-right.
-            // "prev" (left neighbor) and "next" (right neighbor)
-            if (position === 'top') {
-              const masks: string[] = [];
-              if (prevVehic) masks.push(`radial-gradient(circle at 0% 100%, transparent ${r}px, black ${r}px)`);
-              if (nextVehic) masks.push(`radial-gradient(circle at 100% 100%, transparent ${r}px, black ${r}px)`);
-              if (masks.length > 0) {
-                maskImage = masks.join(', ');
-              }
-              bTop = curb;
-            } else if (position === 'bottom') {
-              const masks: string[] = [];
-              if (prevVehic) masks.push(`radial-gradient(circle at 0% 0%, transparent ${r}px, black ${r}px)`);
-              if (nextVehic) masks.push(`radial-gradient(circle at 100% 0%, transparent ${r}px, black ${r}px)`);
-              if (masks.length > 0) {
-                maskImage = masks.join(', ');
-              }
-              bBottom = curb;
-            }
-          }
-        } else if (isMedian && oppRoute) {
-          if (isHorizontal) {
-            if (position === 'left') {
-              const intType = getIntCellType(i, 0);
-              if (intType === 'drive_lane' || intType === 'crosswalk') {
-                tr = r; br = r; bRight = curb;
-              }
-            } else if (position === 'right') {
-              const intType = getIntCellType(i, oppRoute.crossSection.elements.length - 1);
-              if (intType === 'drive_lane' || intType === 'crosswalk') {
-                tl = r; bl = r; bLeft = curb;
-              }
-            }
-          } else {
-            if (position === 'top') {
-              const intType = getIntCellType(i, 0);
-              if (intType === 'drive_lane' || intType === 'crosswalk') {
-                bl = r; br = r; bBottom = curb;
-              }
-            } else if (position === 'bottom') {
-              const intType = getIntCellType(i, oppRoute.crossSection.elements.length - 1);
-              if (intType === 'drive_lane' || intType === 'crosswalk') {
-                tl = r; tr = r; bTop = curb;
-              }
-            }
-          }
-        }
-
-        let wrapperBg = renderBgColor;
-        if (isMedian || isPreemptedParking) wrapperBg = getLaneColor('drive_lane');
-
-        let wrapperBgImage = bgImage;
-        if (isMedian || isPreemptedParking) wrapperBgImage = 'none';
-
-        const hasInnerDiv = isMedian || isPreemptedParking;
-
         let arrow = null;
         if (el.type === 'drive_lane' && effectiveSectionType === 'leg') {
           const dir = el.direction || 'right';
@@ -275,8 +155,8 @@ export function RouteLeg({
               width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
               height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
               overflow: 'hidden',
-              backgroundColor: wrapperBg,
-              backgroundImage: wrapperBgImage,
+              backgroundColor: renderBgColor,
+              backgroundImage: bgImage,
               boxSizing: 'border-box',
               display: 'flex',
               flexDirection: isHorizontal ? 'row' : 'column',
@@ -286,29 +166,12 @@ export function RouteLeg({
               opacity: interactive && draggedIndex === i ? 0.5 : 1,
               transition: 'all 0.2s ease',
               position: 'relative',
-              borderTop: hasInnerDiv ? 'none' : bTop,
-              borderBottom: hasInnerDiv ? 'none' : bBottom,
-              borderLeft: hasInnerDiv ? 'none' : bLeft,
-              borderRight: hasInnerDiv ? 'none' : bRight,
+              borderTop: bTop,
+              borderBottom: bBottom,
+              borderLeft: bLeft,
+              borderRight: bRight,
             }}
           >
-            {hasInnerDiv && (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  backgroundColor: renderBgColor,
-                  backgroundImage: bgImage,
-                  borderTopLeftRadius: tl, borderTopRightRadius: tr,
-                  borderBottomLeftRadius: bl, borderBottomRightRadius: br,
-                  borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
-                  maskImage: maskImage !== 'none' ? maskImage : undefined,
-                  WebkitMaskImage: maskImage !== 'none' ? maskImage : undefined,
-                  maskComposite: 'intersect', WebkitMaskComposite: 'source-in',
-                  boxSizing: 'border-box',
-                }}
-              />
-            )}
             {(!isHorizontal && sectionType === 'leg') && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
                 {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
@@ -350,7 +213,6 @@ export function IntersectionNode({
   const N_V = routeV.crossSection.elements.length;
   const N_H = routeH.crossSection.elements.length;
   const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
-  const r = px(2);
 
   const firstDriveIndexH = routeH.crossSection.elements.findIndex((el: any) => el.type === 'drive_lane');
   const lastDriveIndexH = [...routeH.crossSection.elements].findLastIndex((el: any) => el.type === 'drive_lane');
@@ -394,8 +256,6 @@ export function IntersectionNode({
       }
 
       let bTop = 'none', bBottom = 'none', bLeft = 'none', bRight = 'none';
-      let tl = 0, tr = 0, bl = 0, br = 0;
-
       const isFarSideH = h_i > lastDriveIndexH;
       if (!vehic) {
         let tVehic = false;
@@ -426,48 +286,6 @@ export function IntersectionNode({
         }
       }
 
-      if (type === 'lawn_strip') {
-        // Determine if this lawn_strip is a median (sandwiched between drive lanes
-        // along one axis). Medians should only round at their terminal ends,
-        // not on the sides flanking the drive lanes.
-        const leftType = v_i > 0 ? getIntCellType(v_i - 1, h_i) : null;
-        const rightType = v_i < N_V - 1 ? getIntCellType(v_i + 1, h_i) : null;
-        const topType = h_i > 0 ? getIntCellType(v_i, h_i - 1) : null;
-        const bottomType = h_i < N_H - 1 ? getIntCellType(v_i, h_i + 1) : null;
-
-        const leftIsDrive = leftType === 'drive_lane' || leftType === 'crosswalk';
-        const rightIsDrive = rightType === 'drive_lane' || rightType === 'crosswalk';
-        const topIsDrive = topType === 'drive_lane' || topType === 'crosswalk';
-        const bottomIsDrive = bottomType === 'drive_lane' || bottomType === 'crosswalk';
-
-        // A horizontal median has drive lanes on both left and right
-        const isHorizMedian = leftIsDrive && rightIsDrive;
-        // A vertical median has drive lanes on both top and bottom
-        const isVertMedian = topIsDrive && bottomIsDrive;
-
-        if (isHorizMedian) {
-          // Continuous horizontal median: only round at top/bottom terminal ends,
-          // and add straight curb lines on the left/right sides.
-          bLeft = curb;
-          bRight = curb;
-          if (topIsDrive) { tl = r; tr = r; bTop = curb; }
-          if (bottomIsDrive) { bl = r; br = r; bBottom = curb; }
-        } else if (isVertMedian) {
-          // Continuous vertical median: only round at left/right terminal ends,
-          // and add straight curb lines on the top/bottom sides.
-          bTop = curb;
-          bBottom = curb;
-          if (leftIsDrive) { tl = r; bl = r; bLeft = curb; }
-          if (rightIsDrive) { tr = r; br = r; bRight = curb; }
-        } else {
-          // Standalone lawn_strip island — round toward any adjacent driving surface
-          if (rightIsDrive) { tr = r; br = r; bRight = curb; }
-          if (leftIsDrive) { tl = r; bl = r; bLeft = curb; }
-          if (bottomIsDrive) { bl = r; br = r; bBottom = curb; }
-          if (topIsDrive) { tl = r; tr = r; bTop = curb; }
-        }
-      }
-
       cells.push(
         <div
           key={`int-${v_i}-${h_i}`}
@@ -476,8 +294,6 @@ export function IntersectionNode({
             gridColumn: v_i + 3,
             backgroundColor: bg,
             backgroundImage: bgImage,
-            borderTopLeftRadius: tl, borderTopRightRadius: tr,
-            borderBottomLeftRadius: bl, borderBottomRightRadius: br,
             borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
             boxSizing: 'border-box',
           }}
