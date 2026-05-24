@@ -450,7 +450,7 @@ export function LotClassEditor({ id }: { id?: string }) {
          <div 
            ref={containerRef}
            style={{ 
-             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden'
+             width: '100%', height: '100%', boxSizing: 'border-box', position: 'relative', overflow: 'hidden'
            }}>
              <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
