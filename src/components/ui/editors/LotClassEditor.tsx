@@ -147,23 +147,27 @@ export function LotClassEditor({ id }: { id?: string }) {
 
     const topRouteW = getRouteWidth(previewRoutes.top);
     const bottomRouteW = getRouteWidth(previewRoutes.bottom);
-    const leftRouteW = getRouteWidth(previewRoutes.left);
-    const rightRouteW = getRouteWidth(previewRoutes.right);
-
-    const ext = 50; // extra feet around the boundary for intersection legs
-
-    const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
-    const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
+    const padding = 30; // Breathing room outside outer route boundaries for scale fitting
+    const fitW = padding + leftRouteW + blockW + rightRouteW + padding;
+    const fitD = padding + topRouteW + blockD + bottomRouteW + padding;
 
     // Expand to fill container, with 5% margin on each side (10% total)
     const marginW = containerSize.w * 0.10;
     const marginH = containerSize.h * 0.10;
-    const scale = Math.min((containerSize.w - marginW) / totalW, (containerSize.h - marginH) / totalD, 15);
+    const scale = Math.min((containerSize.w - marginW) / fitW, (containerSize.h - marginH) / fitD, 15);
     const px = (val: number) => val * scale;
 
+    const ext = 1000; // massive extension to bleed off canvas
+    const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
+    const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
+
+    // Center the fit bounds within the container
+    const centerOffsetX = px(ext + leftRouteW + blockW / 2);
+    const centerOffsetY = px(ext + topRouteW + blockD / 2);
+
     // Use exact integer pixel snapping to prevent blurry CSS transform alignment
-    const blockOffsetX = Math.floor(containerSize.w / 2 - px(totalW) / 2);
-    const blockOffsetY = Math.floor(containerSize.h / 2 - px(totalD) / 2);
+    const blockOffsetX = Math.floor(containerSize.w / 2 - centerOffsetX);
+    const blockOffsetY = Math.floor(containerSize.h / 2 - centerOffsetY);
 
     // We export these so they can be passed to DrillDownLayout canvasStyle
     const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
@@ -229,8 +233,8 @@ export function LotClassEditor({ id }: { id?: string }) {
             onMouseLeave={() => setHoveredField(null)}
             style={{
               position: 'absolute', top: px(t), left: px(l), width: px(rw), height: px(rh),
-              background: routeId ? 'var(--bg-modifier-hover)' : 'var(--bg-modifier-active)',
-              border: `1px solid var(--border-subtle)`,
+              background: rc ? 'transparent' : 'var(--bg-modifier-active)',
+              border: rc ? 'none' : `1px solid var(--border-subtle)`,
               cursor: 'pointer',
               outline: isHovered ? '2px solid var(--text-primary)' : 'none',
               zIndex: 10,
@@ -259,8 +263,8 @@ export function LotClassEditor({ id }: { id?: string }) {
        return (
          <div style={{
            position: 'absolute', top: px(t), left: px(l), width: px(w), height: px(h),
-           background: 'var(--bg-modifier-active)',
-           border: '1px solid var(--border-subtle)',
+           background: (rcH && rcV) ? 'transparent' : 'var(--bg-modifier-active)',
+           border: (rcH && rcV) ? 'none' : '1px solid var(--border-subtle)',
            zIndex: 10,
            overflow: 'hidden'
          }}>
@@ -286,8 +290,8 @@ export function LotClassEditor({ id }: { id?: string }) {
        for (let row = 0; row < 2; row++) {
          for (let col = 0; col < 5; col++) {
            const sb = evaluateSetbacks(row as 0|1, col);
-           const lTop = topRouteW + (row * depth);
-           const lLeft = leftRouteW + (col * width);
+           const lTop = (row * depth);
+           const lLeft = (col * width);
            
            const arrowRotations: Record<string, number> = { top: 45, right: 135, bottom: 225, left: 315 };
            const rot = arrowRotations[sb.frontEdge];
@@ -381,6 +385,32 @@ export function LotClassEditor({ id }: { id?: string }) {
            style={{ 
              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden'
            }}>
+            <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  padding: '6px 12px',
+                  background: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: '4px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  fontWeight: 'bold',
+                  boxShadow: 'var(--shadow)'
+                }}>
+                  Lot Preview
+                </div>
+                <div style={{
+                  background: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-strong)',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  fontFamily: 'monospace',
+                  boxShadow: 'var(--shadow)'
+                }}>
+                  1 grid square = 5'
+                </div>
+            </div>
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
                {/* Routes (Legs) */}
                <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW} rh={topRouteW} t={ext} l={ext + leftRouteW} />
