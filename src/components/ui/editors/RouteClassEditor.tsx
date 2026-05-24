@@ -229,20 +229,24 @@ export function RouteClassEditor({ id }: { id?: string }) {
     return (
       <div ref={canvasRef} style={{ width: '100%', height: '100%', boxSizing: 'border-box', position: 'relative' }}>
          {/* HUD Report */}
-         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)', maxWidth: '300px' }}>
+         <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', boxShadow: 'var(--shadow)', maxWidth: '300px' }}>
             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
-            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px'}}>
               <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold', lineHeight: '1.2' }}>{totalWidth}'</span>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
             </div>
-            
-            {errors.map((err, idx) => (
-              <span key={`err-${idx}`} style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 'bold' }}>{err}</span>
-            ))}
-            {warnings.map((warn, idx) => (
-              <span key={`warn-${idx}`} style={{ color: 'var(--color-warning)', fontSize: '0.75rem', fontWeight: 'bold' }}>{warn}</span>
-            ))}
          </div>
+         
+         {(errors.length > 0 || warnings.length > 0) && (
+           <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', maxWidth: '400px', background: 'var(--bg-inspector)', padding: '12px', borderRadius: '8px', boxShadow: 'var(--shadow)', borderLeft: `4px solid ${errors.length > 0 ? 'var(--color-danger)' : 'var(--color-warning)'}` }}>
+              {errors.map((err, idx) => (
+                <span key={`err-${idx}`} style={{ color: 'var(--color-danger)', fontSize: '0.8rem', fontWeight: 'bold', textAlign: 'right' }}>{err}</span>
+              ))}
+              {warnings.map((warn, idx) => (
+                <span key={`warn-${idx}`} style={{ color: 'var(--color-warning)', fontSize: '0.8rem', fontWeight: 'bold', textAlign: 'right' }}>{warn}</span>
+              ))}
+           </div>
+         )}
          
          <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>
            Intersection Preview
