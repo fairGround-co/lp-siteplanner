@@ -290,9 +290,9 @@ export function RouteLeg({
             data-type={el.type}
             data-direction={el.direction || 'right'}
             style={{
-              flex: `0 0 ${px(el.targetWidth)}px`,
-              width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
-              height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
+              flex: `0 0 ${px(effectiveWidths[i])}px`,
+              width: isHorizontal ? '100%' : `${px(effectiveWidths[i])}px`,
+              height: isHorizontal ? `${px(effectiveWidths[i])}px` : '100%',
               overflow: 'visible',
               cursor: interactive && sectionType === 'leg' ? 'grab' : 'default',
               opacity: interactive && draggedIndex === i ? 0.5 : 1,
