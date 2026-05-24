@@ -51,7 +51,8 @@ export function RouteLeg({
   onMouseLeaveLane,
 }: RouteLegProps) {
   const px = (ft: number) => ft * pxPerFt;
-
+  const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
+  const lastDrive = [...route.crossSection.elements].findLastIndex((el) => el.type === 'drive_lane');
 
   return (
     <div
@@ -68,13 +69,21 @@ export function RouteLeg({
         const isHovered = interactive && hoveredIndex === i && sectionType === 'leg';
         const bgColor = getLaneColor(el.type);
 
-        const vehic = el.type === 'drive_lane' || el.type === 'parking_lane';
+        // Outer parking lanes (between sidewalk edge and drive lanes) are daylighted in setback zones
+        const isOuterParking = el.type === 'parking_lane' && (i < firstDrive || i > lastDrive);
+        const isPreemptedParking = isOuterParking && effectiveSectionType === 'setback';
+        const vehic = el.type === 'drive_lane' || (el.type === 'parking_lane' && !isPreemptedParking);
 
         const prevEl = route.crossSection.elements[i - 1];
         const nextEl = route.crossSection.elements[i + 1];
 
-        const prevVehic = prevEl ? prevEl.type === 'drive_lane' || prevEl.type === 'parking_lane' : false;
-        const nextVehic = nextEl ? nextEl.type === 'drive_lane' || nextEl.type === 'parking_lane' : false;
+        const prevOuterParking = prevEl?.type === 'parking_lane' && (i - 1 < firstDrive || i - 1 > lastDrive);
+        const prevPreempted = prevOuterParking && effectiveSectionType === 'setback';
+        const nextOuterParking = nextEl?.type === 'parking_lane' && (i + 1 < firstDrive || i + 1 > lastDrive);
+        const nextPreempted = nextOuterParking && effectiveSectionType === 'setback';
+
+        const prevVehic = prevEl ? prevEl.type === 'drive_lane' || (prevEl.type === 'parking_lane' && !prevPreempted) : false;
+        const nextVehic = nextEl ? nextEl.type === 'drive_lane' || (nextEl.type === 'parking_lane' && !nextPreempted) : false;
 
         const curb = `${px(0.5)}px solid ${getLaneColor('sidewalk')}`;
 
@@ -104,7 +113,7 @@ export function RouteLeg({
           bgImage = getParkingStripeBackground(i, route.crossSection.elements, !isHorizontal, pLength, pWidth, pxPerFt);
         }
 
-        const renderBgColor = (el as any).displayStyle?.fillColor || bgColor;
+        const renderBgColor = isPreemptedParking ? getLaneColor('lawn_strip') : (el as any).displayStyle?.fillColor || bgColor;
 
         let arrow = null;
         if (el.type === 'drive_lane' && effectiveSectionType === 'leg') {
@@ -215,6 +224,16 @@ export function IntersectionNode({
   const firstDriveIndexV = routeV.crossSection.elements.findIndex((el: any) => el.type === 'drive_lane');
   const lastDriveIndexV = [...routeV.crossSection.elements].findLastIndex((el: any) => el.type === 'drive_lane');
 
+  // Outer parking lanes are those outside the driving box (closer to sidewalk than to median)
+  const isOuterParkingV = (idx: number) => {
+    const el = routeV.crossSection.elements[idx];
+    return el?.type === 'parking_lane' && (idx < firstDriveIndexV || idx > lastDriveIndexV);
+  };
+  const isOuterParkingH = (idx: number) => {
+    const el = routeH.crossSection.elements[idx];
+    return el?.type === 'parking_lane' && (idx < firstDriveIndexH || idx > lastDriveIndexH);
+  };
+
   const getIntCellType = (v_i: number, h_i: number) => {
     const v_el = routeV.crossSection.elements[v_i];
     const h_el = routeH.crossSection.elements[h_i];
@@ -222,7 +241,14 @@ export function IntersectionNode({
 
     const isInsideDrivingBox = v_i >= firstDriveIndexV && v_i <= lastDriveIndexV && h_i >= firstDriveIndexH && h_i <= lastDriveIndexH;
 
-    const has = (t: string) => v_el.type === t || h_el.type === t;
+    // Treat outer parking lanes as non-vehicular (daylighted to grass)
+    const vIsOuterParking = isOuterParkingV(v_i);
+    const hIsOuterParking = isOuterParkingH(h_i);
+    // Effective types: outer parking acts like lawn_strip
+    const vType = vIsOuterParking ? 'lawn_strip' : v_el.type;
+    const hType = hIsOuterParking ? 'lawn_strip' : h_el.type;
+
+    const has = (t: string) => vType === t || hType === t;
     if (has('sidewalk')) {
       if (has('drive_lane')) return 'crosswalk';
       return 'sidewalk';
