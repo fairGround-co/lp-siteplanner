@@ -99,6 +99,21 @@ export function RouteClassEditor({ id }: { id?: string }) {
     }
   }, [id, store.routeClasses]);
 
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(entries => {
+      for (let e of entries) {
+        setContainerSize({ w: e.contentRect.width, h: e.contentRect.height });
+      }
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   if (!route) return null;
 
   const handleSave = () => {
@@ -166,8 +181,22 @@ export function RouteClassEditor({ id }: { id?: string }) {
 
     const isValid = totalWidth % (store.config?.baseGridSize || 12) === 0;
     const statusColor = isValid ? 'var(--color-success)' : 'var(--color-warning)';
+    const w_px = route.crossSection.elements.reduce((acc, el) => acc + Math.round(el.targetWidth * pxPerFt), 0);
+
+    let anchorX = 0;
+    let anchorY = 0;
+    if (containerSize.w > 0 && containerSize.h > 0) {
+      const idealX = containerSize.w / 2 + w_px / 2;
+      const idealY = containerSize.h / 2 - w_px / 2;
+      // Snap to grid
+      const snappedX = Math.round(idealX / pxPerGrid) * pxPerGrid;
+      const snappedY = Math.round(idealY / pxPerGrid) * pxPerGrid;
+      anchorX = Math.max(0, snappedX - w_px);
+      anchorY = Math.max(0, snappedY);
+    }
+
     return (
-      <div style={{ width: '100%', height: '100%', display: 'flex', boxSizing: 'border-box', padding: '120px', position: 'relative' }}>
+      <div ref={canvasRef} style={{ width: '100%', height: '100%', boxSizing: 'border-box', position: 'relative' }}>
          {/* HUD Report */}
          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 20, background: 'var(--bg-inspector)', border: `2px solid ${statusColor}`, padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px', boxShadow: 'var(--shadow)' }}>
             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Total ROW</span>
@@ -196,10 +225,12 @@ export function RouteClassEditor({ id }: { id?: string }) {
             onClickLane={scrollToLane}
             onMouseEnterLane={setHoveredIndex}
             onMouseLeaveLane={() => setHoveredIndex(null)}
+            anchorX={anchorX}
+            anchorY={anchorY}
          />
 
          {/* Scale Reference Bar */}
-         <div style={{ position: 'absolute', bottom: '16px', left: '16px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+         <div style={{ position: 'absolute', bottom: '40px', left: '40px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
             <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
               1 Grid Cell = {gridFt}'
             </span>
@@ -342,7 +373,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
       <DrillDownLayout 
         canvasStyle={{ 
           backgroundSize: `${pxPerGrid}px ${pxPerGrid}px`,
-          backgroundPosition: `120px 120px`
+          backgroundPosition: '0 0'
         }}
         canvas={renderCanvas()}
         inspector={renderInspector()}
