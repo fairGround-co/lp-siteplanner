@@ -5,7 +5,7 @@ import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { LotClass } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
 import { ColorSwatchPicker } from '../ColorSwatchPicker';
-import { RouteLeg } from '../IntersectionNode';
+import { RouteLeg, IntersectionNode } from '../IntersectionNode';
 
 export function LotClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
@@ -241,10 +241,38 @@ export function LotClassEditor({ id }: { id?: string }) {
                 position="leg"
                 config={store.config}
                 pxPerFt={scale}
+                hideLabels={true}
               />
             ) : (
               <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>None</span>
             )}
+         </div>
+       );
+    };
+
+    const IntersectionRect = ({ routeHId, routeVId, w, h, t, l }: any) => {
+       const rcH = routeHId ? store.routeClasses[routeHId] : null;
+       const rcV = routeVId ? store.routeClasses[routeVId] : null;
+
+       return (
+         <div style={{
+           position: 'absolute', top: px(t), left: px(l), width: px(w), height: px(h),
+           background: 'var(--bg-modifier-active)',
+           border: '1px solid var(--border-subtle)',
+           zIndex: 10,
+           overflow: 'hidden'
+         }}>
+           {(rcH && rcV) ? (
+             <IntersectionNode
+                routeH={rcH}
+                routeV={rcV}
+                config={store.config}
+                pxPerFt={scale}
+                hideLabels={true}
+             />
+           ) : (
+             <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>None</span>
+           )}
          </div>
        );
     };
@@ -350,11 +378,17 @@ export function LotClassEditor({ id }: { id?: string }) {
              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden'
            }}>
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
-               {/* Routes */}
-               <RouteRect edge="top" routeId={previewRoutes.top} rw={totalW} rh={topRouteW} t={0} l={0} />
-               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={totalW} rh={bottomRouteW} t={topRouteW + blockD} l={0} />
+               {/* Routes (Legs) */}
+               <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW} rh={topRouteW} t={0} l={leftRouteW} />
+               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW} rh={bottomRouteW} t={topRouteW + blockD} l={leftRouteW} />
                <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD} t={topRouteW} l={0} />
                <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD} t={topRouteW} l={leftRouteW + blockW} />
+
+               {/* Route Intersections (Corners) */}
+               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} w={leftRouteW} h={topRouteW} t={0} l={0} />
+               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} w={rightRouteW} h={topRouteW} t={0} l={leftRouteW + blockW} />
+               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} w={leftRouteW} h={bottomRouteW} t={topRouteW + blockD} l={0} />
+               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} w={rightRouteW} h={bottomRouteW} t={topRouteW + blockD} l={leftRouteW + blockW} />
 
                {renderLots()}
 

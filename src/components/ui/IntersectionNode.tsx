@@ -27,6 +27,7 @@ interface RouteLegProps {
   config: SystemConfig;
   pxPerFt: number;
   interactive?: boolean;
+  hideLabels?: boolean;
   hoveredIndex?: number | null;
   draggedIndex?: number | null;
   onDragStart?: (i: number, isHorizontal: boolean) => void;
@@ -56,6 +57,7 @@ export function RouteLeg({
   onClickLane,
   onMouseEnterLane,
   onMouseLeaveLane,
+  hideLabels = false,
 }: RouteLegProps) {
   const px = (ft: number) => Math.round(ft * pxPerFt);
   const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
@@ -322,7 +324,7 @@ export function RouteLeg({
                 borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
               }}
             >
-              {(!isHorizontal && sectionType === 'leg') && (
+              {(!isHorizontal && sectionType === 'leg' && !hideLabels) && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
                   {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
                   <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
@@ -331,7 +333,7 @@ export function RouteLeg({
                   </span>
                 </div>
               )}
-              {(isHorizontal && sectionType === 'leg') && (
+              {(isHorizontal && sectionType === 'leg' && !hideLabels) && (
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
                     {el.type.replace('_', ' ')}
@@ -361,6 +363,7 @@ export function IntersectionNode({
   pxPerFt,
   anchorX,
   anchorY,
+  hideLabels = false,
   ...interactionProps
 }: any) {
   const px = (ft: number) => Math.round(ft * pxPerFt);
@@ -639,14 +642,14 @@ export function IntersectionNode({
   return (
     <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
       <div style={{ gridRow: 1, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
-        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="top" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="top" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
       </div>
       <div style={{ gridRow: 2, gridColumn: `3 / span ${N_V}`, zIndex: 5 }}>
         <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} sectionType="setback" position="top" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
 
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 1, zIndex: 10 }}>
-        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="left" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="left" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
       </div>
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: 2, zIndex: 5 }}>
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="left" config={config} pxPerFt={pxPerFt} {...interactionProps} />
@@ -656,14 +659,14 @@ export function IntersectionNode({
         <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} sectionType="setback" position="right" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
       <div style={{ gridRow: `3 / span ${N_H}`, gridColumn: N_V + 4, zIndex: 10 }}>
-        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="right" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+        <RouteLeg route={routeH} oppRoute={routeV} isHorizontal={true} position="right" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
       </div>
 
       <div style={{ gridRow: N_H + 3, gridColumn: `3 / span ${N_V}`, zIndex: 5 }}>
         <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} sectionType="setback" position="bottom" config={config} pxPerFt={pxPerFt} {...interactionProps} />
       </div>
       <div style={{ gridRow: N_H + 4, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
-        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="bottom" config={config} pxPerFt={pxPerFt} {...interactionProps} />
+        <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="bottom" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
       </div>
 
       {cells}
