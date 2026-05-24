@@ -1,12 +1,41 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Info, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { LotClass } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
 import { ColorSwatchPicker } from '../ColorSwatchPicker';
 import { RouteLeg, IntersectionNode } from '../IntersectionNode';
 import { ArchitecturalScale } from '../ArchitecturalScale';
+
+const CollapsibleSection = ({ 
+  title, 
+  defaultOpen = true, 
+  hasWarning = false, 
+  hasError = false, 
+  children, 
+  onMouseEnter, 
+  onMouseLeave,
+  overridesRef 
+}: any) => {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  return (
+    <div className="inspector-section" style={{ paddingBottom: isOpen ? '16px' : '0' }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} ref={overridesRef}>
+      <div 
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '16px' : '0' }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h3 style={{ margin: 0, border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {title}
+          {hasError && <AlertTriangle size={16} color="#ef4444" />}
+          {hasWarning && !hasError && <AlertTriangle size={16} color="#eab308" />}
+        </h3>
+        <span style={{ transform: isOpen ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.8rem' }}>▼</span>
+      </div>
+      {isOpen && children}
+    </div>
+  );
+};
 
 export function LotClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
@@ -81,6 +110,8 @@ export function LotClassEditor({ id }: { id?: string }) {
         maxDepth: 120,
         minBuildableWidth: 12,
         minBuildableDepth: 40,
+        usageDensity: 1,
+        usageMetric: 'DU',
         splitPreference: 'split_if_possible',
         setbacks: {
           frontageHierarchy: [],
@@ -436,7 +467,14 @@ export function LotClassEditor({ id }: { id?: string }) {
                 <div style={{
                   padding: '8px 12px',
                   background: 'var(--bg-canvas)',
-                  border: '1px solid var(--border-strong)',
+                  border: `2px solid ${(() => {
+                    const hasDepthError = lot.maxDepth < lot.minDepth;
+                    const hasWidthError = lot.maxWidth < lot.minWidth;
+                    const hasGridWarn = lot.targetWidth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0 || lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0;
+                    const checkSetbacks = (sb: any) => sb.default % gridIncrement !== 0 || Object.values(sb.perRouteClass).some((v: any) => v % gridIncrement !== 0);
+                    const hasSetbackWarn = checkSetbacks(lot.setbacks.front) || checkSetbacks(lot.setbacks.rear) || checkSetbacks(lot.setbacks.side);
+                    return (hasDepthError || hasWidthError) ? '#ef4444' : (hasGridWarn || hasSetbackWarn) ? '#eab308' : 'var(--border-strong)';
+                  })()}`,
                   borderRadius: '4px',
                   color: 'var(--text-primary)',
                   fontSize: '0.85rem',
@@ -471,6 +509,15 @@ export function LotClassEditor({ id }: { id?: string }) {
                         const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
                         return `${bW}' x ${bD}'`;
                      })()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                     <span>% of Gross Area</span>
+                     <span>{(() => {
+                        const sb = evaluateSetbacks(0, 2);
+                        const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                        const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                        return Math.round((bW * bD) / (width * depth) * 100);
+                     })()}%</span>
                   </div>
                 </div>
              </div>
@@ -561,8 +608,7 @@ export function LotClassEditor({ id }: { id?: string }) {
         {saveButtonPortal}
         <h2 style={{margin: '0 0 16px 0', fontSize:'1.2rem'}}>Edit Lot Typology</h2>
 
-      <div className="inspector-section">
-        <h3>General</h3>
+      <CollapsibleSection title="General">
         <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
           <ColorSwatchPicker 
             label="Display Color"
@@ -577,13 +623,9 @@ export function LotClassEditor({ id }: { id?: string }) {
             <input type="text" value={lot.name} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ name: e.target.value })} />
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="inspector-section" onMouseEnter={() => setHoveredField('width')} onMouseLeave={() => setHoveredField(null)}>
-        <h3>Typical Dimensions (ft)</h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '16px', lineHeight: 1.4 }}>
-          The ideal dimensional footprint for this lot. The engine will attempt to hit this target width when subdividing.
-        </p>
+      <CollapsibleSection title="Typical Dimensions (ft)" onMouseEnter={() => setHoveredField('width')} onMouseLeave={() => setHoveredField(null)} hasWarning={lot.targetWidth % gridIncrement !== 0}>
         <div className="inspector-field">
           <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
             Target Width
@@ -597,13 +639,17 @@ export function LotClassEditor({ id }: { id?: string }) {
             style={{ borderColor: lot.targetWidth % gridIncrement !== 0 ? '#eab308' : undefined }}
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="inspector-section" ref={overridesRef}>
-        <h3>Setbacks (ft)</h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '16px', lineHeight: 1.4 }}>
-          Setbacks define the non-buildable exterior perimeter of the lot, enforcing required yard space between the property line and the actual building footprint.
-        </p>
+      <CollapsibleSection 
+        title="Setbacks (ft)" 
+        overridesRef={overridesRef}
+        hasWarning={
+          lot.setbacks.front.default % gridIncrement !== 0 || Object.values(lot.setbacks.front.perRouteClass).some(v => v % gridIncrement !== 0) ||
+          lot.setbacks.rear.default % gridIncrement !== 0 || Object.values(lot.setbacks.rear.perRouteClass).some(v => v % gridIncrement !== 0) ||
+          lot.setbacks.side.default % gridIncrement !== 0 || Object.values(lot.setbacks.side.perRouteClass).some(v => v % gridIncrement !== 0)
+        }
+      >
         <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '8px' }}>
           <div className="inspector-field" style={{ flex: 1, marginBottom: 0 }} onMouseEnter={() => setHoveredField('frontSetback')} onMouseLeave={() => setHoveredField(null)}>
             <label>Front Default</label>
@@ -630,7 +676,6 @@ export function LotClassEditor({ id }: { id?: string }) {
                   }} />
                 </div>
               ))}
-              {Object.keys(store.routeClasses).length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>No route classes defined.</span>}
             </div>
           )}
         </div>
@@ -661,7 +706,6 @@ export function LotClassEditor({ id }: { id?: string }) {
                   }} />
                 </div>
               ))}
-              {Object.keys(store.routeClasses).length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>No route classes defined.</span>}
             </div>
           )}
         </div>
@@ -692,29 +736,26 @@ export function LotClassEditor({ id }: { id?: string }) {
                   }} />
                 </div>
               ))}
-              {Object.keys(store.routeClasses).length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>No route classes defined.</span>}
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="inspector-section">
-        <h3>Constraints (ft)</h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '16px', lineHeight: 1.4 }}>
-          Hard mathematical limits for topological warping. The engine will refuse to warp or subdivide the lot beyond these boundaries.
-        </p>
+      <CollapsibleSection 
+        title="Constraints (ft)" 
+        hasWarning={lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0}
+        hasError={lot.maxDepth < lot.minDepth || lot.maxWidth < lot.minWidth}
+      >
         <div style={{ display: 'flex', gap: '8px' }}>
           <div className="inspector-field" style={{ flex: 1 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.minWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
               Min Width
-              {lot.minWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
             <input type="number" value={lot.minWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ minWidth: Number(e.target.value) })} style={{ borderColor: lot.minWidth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
           <div className="inspector-field" style={{ flex: 1 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.maxWidth % gridIncrement !== 0 ? '#eab308' : undefined }}>
               Max Width
-              {lot.maxWidth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
             <input type="number" value={lot.maxWidth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ maxWidth: Number(e.target.value) })} style={{ borderColor: lot.maxWidth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
@@ -728,11 +769,12 @@ export function LotClassEditor({ id }: { id?: string }) {
             <input type="number" value={lot.minDepth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ minDepth: Number(e.target.value) })} style={{ borderColor: lot.minDepth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
           <div className="inspector-field" style={{ flex: 1 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: lot.maxDepth % gridIncrement !== 0 ? '#eab308' : undefined }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: (lot.maxDepth % gridIncrement !== 0 || lot.maxDepth < lot.minDepth) ? ((lot.maxDepth < lot.minDepth) ? '#ef4444' : '#eab308') : undefined }}>
               Max Depth
-              {lot.maxDepth % gridIncrement !== 0 && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
+              {lot.maxDepth < lot.minDepth && <span title="Max depth cannot be less than min depth"><AlertTriangle size={14} /></span>}
+              {(lot.maxDepth % gridIncrement !== 0 && lot.maxDepth >= lot.minDepth) && <span title={`Not divisible by ${gridIncrement}ft grid`}><AlertTriangle size={14} /></span>}
             </label>
-            <input type="number" value={lot.maxDepth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ maxDepth: Number(e.target.value) })} style={{ borderColor: lot.maxDepth % gridIncrement !== 0 ? '#eab308' : undefined }} />
+            <input type="number" value={lot.maxDepth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ maxDepth: Number(e.target.value) })} style={{ borderColor: (lot.maxDepth < lot.minDepth) ? '#ef4444' : lot.maxDepth % gridIncrement !== 0 ? '#eab308' : undefined }} />
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -745,10 +787,9 @@ export function LotClassEditor({ id }: { id?: string }) {
             <input type="number" value={lot.minBuildableDepth} onFocus={e => { const t = e.target; setTimeout(() => t.select(), 10); }} onChange={e => updateLot({ minBuildableDepth: Number(e.target.value) })} />
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="inspector-section">
-        <h3>Rules</h3>
+      <CollapsibleSection title="Rules">
         <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '16px', lineHeight: 1.4 }}>
           This dictates how the Geometry Engine behaves when a space is larger than the lot's maximum width.
         </p>
@@ -793,7 +834,7 @@ export function LotClassEditor({ id }: { id?: string }) {
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
     </>
   );
 };

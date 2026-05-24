@@ -6,8 +6,44 @@ import { DrillDownLayout } from '../DrillDownLayout';
 import { IntersectionNode } from '../IntersectionNode';
 import { ArchitecturalScale } from '../ArchitecturalScale';
 
+import { AlertTriangle, Plus, GripVertical, Copy, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Copy } from 'lucide-react';
+const CollapsibleSection = ({ 
+  title, 
+  defaultOpen = true, 
+  hasWarning = false, 
+  hasError = false, 
+  children, 
+  onMouseEnter, 
+  onMouseLeave,
+  overridesRef,
+  headerAction 
+}: any) => {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  return (
+    <div className="inspector-section" style={{ paddingBottom: isOpen ? '16px' : '0' }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} ref={overridesRef}>
+      <div 
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', marginBottom: isOpen ? '16px' : '0' }}
+        onClick={(e) => {
+           // Prevent closing if clicked on a button
+           if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) return;
+           setIsOpen(!isOpen);
+        }}
+      >
+        <h3 style={{ margin: 0, border: 'none', padding: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {title}
+          {hasError && <AlertTriangle size={16} color="#ef4444" />}
+          {hasWarning && !hasError && <AlertTriangle size={16} color="#eab308" />}
+        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {headerAction}
+          <span style={{ transform: isOpen ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.8rem' }}>▼</span>
+        </div>
+      </div>
+      {isOpen && children}
+    </div>
+  );
+};
 
 export function RouteClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
@@ -388,8 +424,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
         {saveButtonPortal}
         <h2 style={{margin: '0 0 16px 0', fontSize:'1.2rem'}}>Edit Route Typology</h2>
 
-        <div className="inspector-section">
-          <h3>General</h3>
+        <CollapsibleSection title="General">
           <div className="inspector-field">
             <label>Name</label>
             <input type="text" value={route.name} onChange={e => updateRoute({ name: e.target.value })} />
@@ -405,13 +440,12 @@ export function RouteClassEditor({ id }: { id?: string }) {
             <label>Curb Radius (ft)</label>
             <input type="number" placeholder={`${store.config?.pedestrianCurbRadius ?? 15} (Default)`} value={route.curbRadius ?? ''} onChange={e => updateRoute({ curbRadius: e.target.value ? Number(e.target.value) : undefined })} />
           </div>
-        </div>
+        </CollapsibleSection>
 
-      <div className="inspector-section">
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px'}}>
-          <h3 style={{border: 'none', margin: 0, padding: 0}}>Lanes (Left to Right)</h3>
-          <button onClick={addElement} style={{background: 'transparent', border: 'none', color: '#4ade80', cursor: 'pointer'}}><Plus size={16}/></button>
-        </div>
+      <CollapsibleSection 
+        title="Lanes (Left to Right)" 
+        headerAction={<button onClick={(e) => { e.stopPropagation(); addElement(); }} style={{background: 'transparent', border: 'none', color: '#4ade80', cursor: 'pointer', display: 'flex', alignItems: 'center'}}><Plus size={16}/></button>}
+      >
         
         {route.crossSection.elements.map((el, i) => (
           <div key={el.id} 
@@ -497,7 +531,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
             </div>
           </div>
         ))}
-      </div>
+      </CollapsibleSection>
     </>
   );
 };

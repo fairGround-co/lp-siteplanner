@@ -93,6 +93,8 @@ export interface LotClass {
   maxDepth: number;
   minBuildableWidth: number;
   minBuildableDepth: number;
+  usageDensity: number;
+  usageMetric: 'DU' | 'GLA' | 'Beds';
   splitPreference: 'always_split' | 'never_split' | 'split_if_possible';
   setbacks: SetbackRules;
   displayStyle: DisplayStyle;
