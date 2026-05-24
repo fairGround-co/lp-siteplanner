@@ -168,17 +168,14 @@ export function RouteLeg({
             
             // To align fluidly with straight border in adjacent cell, the div must overhang into it by cw
             const adjustedPos: any = { ...posStyle };
-            if (isHorizontal) {
-               if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
-            } else {
-               if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
-            }
+            if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
+            if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
 
             nibbles.push(
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...adjustedPos,
                 width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, ${getLaneColor('parking_lane')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
+                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
@@ -216,8 +213,7 @@ export function RouteLeg({
           }
         }
 
-        const hasBorderRadius = brTL !== '0' || brTR !== '0' || brBR !== '0' || brBL !== '0';
-        const baseBgColor = (isPreemptedParking && hasBorderRadius) ? getLaneColor('parking_lane') : renderBgColor;
+        const hasRadius = isPreemptedParking && (brTL !== '0' || brTR !== '0' || brBL !== '0' || brBR !== '0');
 
         return (
           <div
@@ -254,61 +250,57 @@ export function RouteLeg({
               width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
               height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
               overflow: 'visible',
-              backgroundColor: baseBgColor,
-              backgroundImage: bgImage,
-              boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: isHorizontal ? 'row' : 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
               cursor: interactive && sectionType === 'leg' ? 'grab' : 'default',
               opacity: interactive && draggedIndex === i ? 0.5 : 1,
               transition: 'all 0.2s ease',
-              position: 'relative',
-              ...( !(isPreemptedParking && hasBorderRadius) ? {
+              backgroundColor: hasRadius ? getLaneColor('parking_lane') : 'transparent',
+            }}
+          >
+            <div
+              className="route-leg-element"
+              style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: renderBgColor,
+                backgroundImage: bgImage,
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: isHorizontal ? 'row' : 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
                 borderTop: bTop,
                 borderBottom: bBottom,
                 borderLeft: bLeft,
                 borderRight: bRight,
                 borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
-              } : {})
-            }}
-          >
-            {(isPreemptedParking && hasBorderRadius) && (
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: grassColor,
-                borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
-                borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
-                boxSizing: 'border-box',
-                pointerEvents: 'none',
-                zIndex: 0
-              }} />
-            )}
-            {(!isHorizontal && sectionType === 'leg') && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
-                {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                  {el.type.replace('_', ' ')}
-                </span>
-              </div>
-            )}
-            {(isHorizontal && sectionType === 'leg') && (
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
-                  {el.type.replace('_', ' ')}
-                </span>
-                <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
-                {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
-              </div>
-            )}
-            {nibbles}
-            {isHovered && (
-              <div style={{ position: 'absolute', bottom: '40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', color: '#4ade80', fontSize: '0.9rem', width: 'max-content', textAlign: 'center', pointerEvents: 'none', zIndex: 10 }}>
-                Min {el.minWidth}' / Max {el.maxWidth}'
-              </div>
-            )}
+              }}
+            >
+              {(!isHorizontal && sectionType === 'leg') && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
+                  {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
+                  <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                    {el.type.replace('_', ' ')}
+                  </span>
+                </div>
+              )}
+              {(isHorizontal && sectionType === 'leg') && (
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', pointerEvents: 'none' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
+                    {el.type.replace('_', ' ')}
+                  </span>
+                  <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
+                  {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
+                </div>
+              )}
+              {nibbles}
+              {isHovered && (
+                <div style={{ position: 'absolute', bottom: '40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', color: '#4ade80', fontSize: '0.9rem', width: 'max-content', textAlign: 'center', pointerEvents: 'none', zIndex: 10 }}>
+                  Min {el.minWidth}' / Max {el.maxWidth}'
+                </div>
+              )}
+            </div>
           </div>
         );
       })}
