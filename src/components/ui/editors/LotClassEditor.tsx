@@ -203,16 +203,19 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    const allRouteWidths = Object.values(store.routeClasses).map(rc => getRouteWidth(rc.id));
-    const maxRouteW = allRouteWidths.length > 0 ? Math.max(...allRouteWidths) : 0;
+    // Find the widest route in the whole catalog — used as a fixed buffer on each side for scale.
+    // This ensures scale is stable as you switch routes and that outer edges always fit.
+    const maxRouteW = Math.max(20, ...Object.values(store.routeClasses).map(rc => getRouteWidth(rc.id)));
 
+    // Scale so that: block + widest-route on all 4 sides fits within container with ~4% margin each side.
     const fitW = maxRouteW + blockW + maxRouteW;
     const fitD = maxRouteW + blockD + maxRouteW;
-
-    // 8% total margin (4% on each side) to keep clear space
-    const marginW = containerSize.w * 0.08;
-    const marginH = containerSize.h * 0.08;
-    const scale = Math.min((containerSize.w - marginW) / fitW, (containerSize.h - marginH) / fitD, 15);
+    const margin = 0.08; // 4% each side
+    const scale = Math.min(
+      (containerSize.w * (1 - margin)) / fitW,
+      (containerSize.h * (1 - margin)) / fitD,
+      15
+    );
     const px = (val: number) => val * scale;
 
     const ext = 1000; // massive extension to bleed off canvas
@@ -221,10 +224,10 @@ export function LotClassEditor({ id }: { id?: string }) {
     const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
     const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
-    // Center the middle of the sample lot block in the middle of the preview container
+    // Center the block itself in the container (routes bleed out equally on all sides)
     const blockCenterX = ext + leftRouteW + blockW / 2;
     const blockCenterY = ext + topRouteW + blockD / 2;
-    
+
     const blockOffsetX = Math.floor(containerSize.w / 2 - px(blockCenterX));
     const blockOffsetY = Math.floor(containerSize.h / 2 - px(blockCenterY));
 
