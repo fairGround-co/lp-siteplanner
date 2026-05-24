@@ -154,7 +154,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   };
 
   const width = lot.targetWidth || 24;
-  const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
+  const depth = lot.targetDepth || 100;
   const blockW = width * sampleLotsCount;
   const blockD = depth * 2;
 
