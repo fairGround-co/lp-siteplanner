@@ -201,7 +201,9 @@ export function RouteClassEditor({ id }: { id?: string }) {
         if (nextEl?.type === 'parking_lane') {
           const angle1 = el.parkingAngle || 0;
           const angle2 = nextEl.parkingAngle || 0;
-          if (angle1 > 0 && angle2 > 0) {
+          const isNonOrthogonal1 = angle1 > 0 && angle1 < 90;
+          const isNonOrthogonal2 = angle2 > 0 && angle2 < 90;
+          if (isNonOrthogonal1 && isNonOrthogonal2) {
             warnings.push(`WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.`);
           }
         }
