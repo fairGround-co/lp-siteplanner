@@ -43,19 +43,30 @@ export function getParkingStripeBackground(
       break;
     }
   }
+  
+  let isAboveDrive = leftDriveDist > rightDriveDist;
   if (leftDriveDist < rightDriveDist) adjacentDirection = leftDir || 'right';
   else if (rightDriveDist < leftDriveDist) adjacentDirection = rightDir || 'right';
   else if (leftDir) adjacentDirection = leftDir;
 
   const flowDir = adjacentDirection === 'yield' ? 'right' : adjacentDirection;
-  let carAngle = 0;
   
-  if (isVertical) {
-    carAngle = flowDir === 'right' ? angle : 180 + angle;
+  let baseHeading = 90;
+  if (!isVertical) {
+    baseHeading = flowDir === 'right' ? 90 : 270;
   } else {
-    carAngle = flowDir === 'right' ? 90 + angle : 270 + angle;
+    baseHeading = flowDir === 'right' ? 180 : 0;
   }
   
+  let turnDir = 1;
+  if (!isVertical) {
+    turnDir = isAboveDrive ? -1 : 1;
+  } else {
+    turnDir = isAboveDrive ? 1 : -1;
+  }
+  if (flowDir === 'left') turnDir *= -1;
+
+  const carAngle = baseHeading + turnDir * angle;
   const lineAngle = angle === 0 ? carAngle + 90 : carAngle;
   const gradAngle = lineAngle - 90;
   const spacingFt = angle === 0 ? pLength : pWidth;

@@ -204,6 +204,18 @@ export function RouteClassEditor({ id }: { id?: string }) {
               <span style={{ color: statusColor, fontSize: '1.5rem', fontWeight: 'bold' }}>{totalWidth}'</span>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>({route.crossSection.elements.reduce((acc, el) => acc + el.minWidth, 0)}' - {route.crossSection.elements.reduce((acc, el) => acc + el.maxWidth, 0)}')</span>
             </div>
+            
+            {route.crossSection.elements.map((el, i) => {
+              if (el.type === 'parking_lane') {
+                const hasPrevDrive = route.crossSection.elements[i - 1]?.type === 'drive_lane';
+                const hasNextDrive = route.crossSection.elements[i + 1]?.type === 'drive_lane';
+                const adjacentDrives = (hasPrevDrive ? 1 : 0) + (hasNextDrive ? 1 : 0);
+                if (adjacentDrives !== 1) {
+                  return <span key={i} style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 'bold' }}>ERROR: Parking lane must have EXACTLY ONE adjacent drive lane</span>;
+                }
+              }
+              return null;
+            })}
          </div>
          
          <div style={{position: 'absolute', top: 16, left: 16, color: '#aaa', fontSize: '0.8rem', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px'}}>

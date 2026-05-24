@@ -8,6 +8,7 @@ export function getLaneDivider(el1: RouteElement, el2: RouteElement) {
   const isSame = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction === el2.direction;
   if (isOpposite) return '3px double #eab308';
   if (isSame) return '2px dashed rgba(255,255,255,0.5)';
+  if (el1.type === 'parking_lane' && el2.type === 'parking_lane') return `2px solid ${getLaneColor('sidewalk')}`;
   return 'none';
 }
 
