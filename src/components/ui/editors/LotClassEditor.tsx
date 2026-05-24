@@ -150,8 +150,10 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    const totalW = blockW + leftRouteW + rightRouteW;
-    const totalD = blockD + topRouteW + bottomRouteW;
+    const ext = 50; // extra feet around the boundary for intersection legs
+
+    const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
+    const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
     // Expand to fill container, with 5% margin on each side (10% total)
     const marginW = containerSize.w * 0.10;
@@ -164,8 +166,8 @@ export function LotClassEditor({ id }: { id?: string }) {
     const blockOffsetY = Math.floor(containerSize.h / 2 - px(totalD) / 2);
 
     // We export these so they can be passed to DrillDownLayout canvasStyle
-    const gridOffsetX = blockOffsetX + px(leftRouteW);
-    const gridOffsetY = blockOffsetY + px(topRouteW);
+    const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
+    const gridOffsetY = blockOffsetY + px(ext + topRouteW);
 
     const evaluateSetbacks = (row: 0 | 1, col: number) => {
        const adjTop = row === 0 ? (previewRoutes.top || 'LOT') : 'LOT';
@@ -250,7 +252,7 @@ export function LotClassEditor({ id }: { id?: string }) {
        );
     };
 
-    const IntersectionRect = ({ routeHId, routeVId, w, h, t, l }: any) => {
+    const IntersectionRect = ({ routeHId, routeVId, w, h, t, l, anchorX, anchorY }: any) => {
        const rcH = routeHId ? store.routeClasses[routeHId] : null;
        const rcV = routeVId ? store.routeClasses[routeVId] : null;
 
@@ -269,6 +271,8 @@ export function LotClassEditor({ id }: { id?: string }) {
                 config={store.config}
                 pxPerFt={scale}
                 hideLabels={true}
+                anchorX={px(anchorX)}
+                anchorY={px(anchorY)}
              />
            ) : (
              <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>None</span>
@@ -379,18 +383,27 @@ export function LotClassEditor({ id }: { id?: string }) {
            }}>
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
                {/* Routes (Legs) */}
-               <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW} rh={topRouteW} t={0} l={leftRouteW} />
-               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW} rh={bottomRouteW} t={topRouteW + blockD} l={leftRouteW} />
-               <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD} t={topRouteW} l={0} />
-               <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD} t={topRouteW} l={leftRouteW + blockW} />
+               <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW} rh={topRouteW} t={ext} l={ext + leftRouteW} />
+               <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW} rh={bottomRouteW} t={ext + topRouteW + blockD} l={ext + leftRouteW} />
+               <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD} t={ext + topRouteW} l={ext} />
+               <RouteRect edge="right" routeId={previewRoutes.right} rw={rightRouteW} rh={blockD} t={ext + topRouteW} l={ext + leftRouteW + blockW} />
 
                {/* Route Intersections (Corners) */}
-               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} w={leftRouteW} h={topRouteW} t={0} l={0} />
-               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} w={rightRouteW} h={topRouteW} t={0} l={leftRouteW + blockW} />
-               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} w={leftRouteW} h={bottomRouteW} t={topRouteW + blockD} l={0} />
-               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} w={rightRouteW} h={bottomRouteW} t={topRouteW + blockD} l={leftRouteW + blockW} />
+               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} 
+                 w={ext + leftRouteW + blockW/2} h={ext + topRouteW + blockD/2} t={0} l={0} anchorX={ext} anchorY={ext} />
+                 
+               <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} 
+                 w={blockW/2 + rightRouteW + ext} h={ext + topRouteW + blockD/2} t={0} l={ext + leftRouteW + blockW/2} anchorX={blockW/2} anchorY={ext} />
+                 
+               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} 
+                 w={ext + leftRouteW + blockW/2} h={blockD/2 + bottomRouteW + ext} t={ext + topRouteW + blockD/2} l={0} anchorX={ext} anchorY={blockD/2} />
+                 
+               <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} 
+                 w={blockW/2 + rightRouteW + ext} h={blockD/2 + bottomRouteW + ext} t={ext + topRouteW + blockD/2} l={ext + leftRouteW + blockW/2} anchorX={blockW/2} anchorY={blockD/2} />
 
-               {renderLots()}
+               <div style={{ position: 'absolute', top: px(ext + topRouteW), left: px(ext + leftRouteW), width: px(blockW), height: px(blockD) }}>
+                  {renderLots()}
+               </div>
 
                {/* Route Selector Popover */}
                {activeRouteSelect && (
