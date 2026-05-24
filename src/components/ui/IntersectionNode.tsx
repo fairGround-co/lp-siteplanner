@@ -52,8 +52,13 @@ export function RouteLeg({
 }: RouteLegProps) {
   const px = (ft: number) => Math.round(ft * pxPerFt);
   const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
+  const grassColor = getLaneColor('lawn_strip');
   const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
   const lastDrive = [...route.crossSection.elements].findLastIndex((el) => el.type === 'drive_lane');
+
+  // Which edge faces the setback/intersection?
+  // position='top' → bottom edge; 'left' → right edge; 'right' → left edge; 'bottom' → top edge
+  const setbackEdge = position === 'top' ? 'bottom' : position === 'bottom' ? 'top' : position === 'left' ? 'right' : 'left';
 
   return (
     <div
@@ -143,6 +148,52 @@ export function RouteLeg({
           }
         }
 
+        if (isOuterParking && !isPreemptedParking && effectiveSectionType === 'leg') {
+          // Rule 2: Nibble on active parking in leg at setback junction
+          // The edge facing the setback gets a grass nibble where adjacent to lawn_strip
+          const prevIsLawn = prevEl?.type === 'lawn_strip';
+          const nextIsLawn = nextEl?.type === 'lawn_strip';
+
+          // Determine which CSS corner to nibble based on orientation and position
+          // For isHorizontal=true (H route): prev=above, next=below. setbackEdge = left or right
+          // For isHorizontal=false (V route): prev=left, next=right. setbackEdge = top or bottom
+          const addNibble = (cssCorner: string) => {
+            // cssCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+            // Quarter-circle of parking gray at the corner, grass green in the pointed parts outside
+            const posStyle: any = {};
+            if (cssCorner.includes('top')) posStyle.top = 0; else posStyle.bottom = 0;
+            if (cssCorner.includes('left')) posStyle.left = 0; else posStyle.right = 0;
+            const ox = cssCorner.includes('left') ? '100%' : '0%';
+            const oy = cssCorner.includes('top') ? '100%' : '0%';
+            const cw = px(config.curbThickness ?? 0.5);
+            
+            // To align fluidly with straight border in adjacent cell, the div must overhang into it by cw
+            const adjustedPos: any = { ...posStyle };
+            if (cssCorner.includes('top')) adjustedPos.top = `-${cw}px`; else adjustedPos.bottom = `-${cw}px`;
+            if (cssCorner.includes('left')) adjustedPos.left = `-${cw}px`; else adjustedPos.right = `-${cw}px`;
+
+            nibbles.push(
+              <div key={`nibble-${cssCorner}`} style={{
+                position: 'absolute', ...adjustedPos,
+                width: `${cosmeticR + cw}px`, height: `${cosmeticR + cw}px`,
+                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR}px, ${getLaneColor('sidewalk')} ${cosmeticR + cw}px, ${grassColor} ${cosmeticR + cw}px)`,
+                pointerEvents: 'none', zIndex: 2,
+              }} />
+            );
+          };
+
+          if (isHorizontal) {
+            if (prevIsLawn && setbackEdge === 'right') addNibble('top-right');
+            if (prevIsLawn && setbackEdge === 'left') addNibble('top-left');
+            if (nextIsLawn && setbackEdge === 'right') addNibble('bottom-right');
+            if (nextIsLawn && setbackEdge === 'left') addNibble('bottom-left');
+          } else {
+            if (prevIsLawn && setbackEdge === 'bottom') addNibble('bottom-left');
+            if (prevIsLawn && setbackEdge === 'top') addNibble('top-left');
+            if (nextIsLawn && setbackEdge === 'bottom') addNibble('bottom-right');
+            if (nextIsLawn && setbackEdge === 'top') addNibble('top-right');
+          }
+        }
 
         let bgImage = 'none';
         if (el.type === 'parking_lane' && effectiveSectionType === 'leg') {
@@ -358,7 +409,6 @@ export function IntersectionNode({
       if (!vehic) {
         let tVehic = false;
         if (h_i > 0) tVehic = isCellVehic(getIntCellType(v_i, h_i - 1));
-        else tVehic = v_el.type === 'drive_lane';
         if (tVehic) bTop = curb;
 
         let bVehic2 = false;
@@ -367,12 +417,10 @@ export function IntersectionNode({
 
         let lVehic = false;
         if (v_i > 0) lVehic = isCellVehic(getIntCellType(v_i - 1, h_i));
-        else lVehic = h_el.type === 'drive_lane' || (h_el.type === 'parking_lane' && isFarSideH);
         if (lVehic) bLeft = curb;
 
         let rVehic = false;
         if (v_i < N_V - 1) rVehic = isCellVehic(getIntCellType(v_i + 1, h_i));
-        else rVehic = h_el.type === 'drive_lane' || (h_el.type === 'parking_lane' && isFarSideH);
         if (rVehic) bRight = curb;
       } else {
         if (isFarSideH) {
