@@ -43,6 +43,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   const gridIncrement = store.config?.baseGridSize || 10;
   const [lot, setLot] = useState<LotClass | null>(null);
   const [sampleLotsCount, setSampleLotsCount] = useState(5);
+  const [isTitlePopupOpen, setIsTitlePopupOpen] = useState(false);
   const [activeOverride, setActiveOverride] = useState<'front' | 'rear' | 'side' | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [isHudOpen, setIsHudOpen] = useState(true);
@@ -201,7 +202,7 @@ export function LotClassEditor({ id }: { id?: string }) {
 
     const gridPx = px(gridIncrement);
     const scaleAlignedLeft = gridOffsetX + Math.ceil((40 - gridOffsetX) / gridPx) * gridPx;
-    const scaleAlignedTop = gridOffsetY + Math.floor((containerSize.h - 80 - gridOffsetY) / gridPx) * gridPx;
+    const scaleAlignedTop = gridOffsetY + Math.floor((containerSize.h - 40 - gridOffsetY) / gridPx) * gridPx;
 
     const evaluateSetbacks = (row: 0 | 1, col: number) => {
        const adjTop = row === 0 ? (previewRoutes.top || 'LOT') : 'LOT';
@@ -405,20 +406,26 @@ export function LotClassEditor({ id }: { id?: string }) {
 
     return (
       <>
-         <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ padding: '6px 12px', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 'bold', boxShadow: 'var(--shadow)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+         <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div 
+              onClick={() => setIsTitlePopupOpen(!isTitlePopupOpen)}
+              style={{ padding: '6px 12px', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: 'bold', boxShadow: 'var(--shadow)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
               Lot Preview
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 'normal' }}>
-                Sample count:
+              <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>▼</span>
+            </div>
+            {isTitlePopupOpen && (
+              <div style={{ padding: '8px 12px', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.85rem', boxShadow: 'var(--shadow)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Sample blocks:
                 <input 
                   type="number" 
                   min={1} max={20}
                   value={sampleLotsCount}
                   onChange={e => setSampleLotsCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  style={{ width: '40px', padding: '2px 4px', background: 'var(--bg-surface)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', borderRadius: '3px' }}
+                  style={{ width: '45px', padding: '2px 4px', background: 'var(--bg-surface)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', borderRadius: '3px' }}
                 />
               </div>
-            </div>
+            )}
          </div>
 
          <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
