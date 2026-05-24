@@ -198,7 +198,28 @@ export function RouteClassEditor({ id }: { id?: string }) {
         if (adjacentDrives !== 1) {
           errors.push(`ERROR: Parking lane at index ${i} must have EXACTLY ONE adjacent drive lane`);
         } else if (driveLane) {
-          const isTwoWay = route.crossSection.trafficFlow === 'two_way' || driveLane.direction === 'yield';
+          let totalAisleWidth = 0;
+          const dirCount = { left: 0, right: 0, yield: 0 };
+          
+          if (hasPrevDrive) {
+             let j = i - 1;
+             while (j >= 0 && route.crossSection.elements[j].type === 'drive_lane') {
+               totalAisleWidth += route.crossSection.elements[j].targetWidth;
+               const d = route.crossSection.elements[j].direction || 'right';
+               dirCount[d]++;
+               j--;
+             }
+          } else if (hasNextDrive) {
+             let j = i + 1;
+             while (j < route.crossSection.elements.length && route.crossSection.elements[j].type === 'drive_lane') {
+               totalAisleWidth += route.crossSection.elements[j].targetWidth;
+               const d = route.crossSection.elements[j].direction || 'right';
+               dirCount[d]++;
+               j++;
+             }
+          }
+          
+          const isTwoWay = route.crossSection.trafficFlow === 'two_way' || dirCount.yield > 0 || (dirCount.left > 0 && dirCount.right > 0);
           const angle = Math.abs(el.parkingAngle || 0);
           let minAisle = 20; // Default for two-way
           if (!isTwoWay) {
@@ -210,8 +231,9 @@ export function RouteClassEditor({ id }: { id?: string }) {
           } else {
             minAisle = 20; // 20 ft for all angles if two-way
           }
-          if (driveLane.targetWidth < minAisle) {
-            warnings.push(`WARNING: Drive lane adjacent to ${angle}° parking should be at least ${minAisle}' wide for maneuverability.`);
+          
+          if (totalAisleWidth < minAisle) {
+            warnings.push(`WARNING: Drive aisle adjacent to ${angle}° parking should be at least ${minAisle}' wide for maneuverability.`);
           }
         }
         
