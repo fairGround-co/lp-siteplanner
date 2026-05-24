@@ -203,7 +203,7 @@ export function LotClassEditor({ id }: { id?: string }) {
     const leftRouteW = getRouteWidth(previewRoutes.left);
     const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    const padding = 30; // Breathing room outside outer route boundaries for scale fitting
+    const padding = 0; // The bounding logic directly handles outer edges now
     const fitW = padding + leftRouteW + blockW + rightRouteW + padding;
     const fitD = padding + topRouteW + blockD + bottomRouteW + padding;
 
@@ -213,8 +213,8 @@ export function LotClassEditor({ id }: { id?: string }) {
     const scale = Math.min((containerSize.w - marginW) / fitW, (containerSize.h - marginH) / fitD, 15);
     const px = (val: number) => val * scale;
 
-    const ext = 1000; // massive extension to bleed off canvas
     const setbackDist = store.config.intersectionDaylightDistance ?? 25;
+    const ext = setbackDist; // Just enough extension to fit the intersection aprons completely, no infinite bleed
 
     const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
     const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
