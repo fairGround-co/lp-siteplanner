@@ -734,8 +734,6 @@ export function LotClassEditor({ id }: { id?: string }) {
 
   const width = lot.targetWidth || 24;
   const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
-  const blockW = width * 5;
-  const blockD = depth * 2;
   
   // We'll pass a defaultScale to CanvasViewport, but since it doesn't know container size initially,
   // we'll just pick a reasonable pxPerFt like 3.
