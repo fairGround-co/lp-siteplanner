@@ -541,6 +541,7 @@ export function RouteClassEditor({ id }: { id?: string }) {
     return (
       <DrillDownLayout 
         canvasStyle={{ 
+          backgroundImage: `linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)`,
           backgroundSize: `${pxPerGrid}px ${pxPerGrid}px`,
           backgroundPosition: '0 0'
         }}

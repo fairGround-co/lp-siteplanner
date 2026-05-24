@@ -149,12 +149,13 @@ export function LotClassEditor({ id }: { id?: string }) {
     });
   };
 
+  const width = lot.targetWidth || 24;
+  const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
+  const blockW = width * 5;
+  const blockD = depth * 2;
+
   const renderCanvasContent = (scale: number, offsetX: number, offsetY: number, containerSize: { w: number, h: number }) => {
     const px = (val: number) => val * scale;
-    const width = lot.targetWidth || 24;
-    const depth = Math.min(Math.max(lot.minDepth, 100), lot.maxDepth) || 100;
-    const blockW = width * 5;
-    const blockD = depth * 2;
     
     const getRouteWidth = (id: string | null) => {
       if (!id) return 20;
@@ -732,14 +733,30 @@ export function LotClassEditor({ id }: { id?: string }) {
   );
 };
 
-  // We'll pass a defaultScale to CanvasViewport, but since it doesn't know container size initially,
-  // we'll just pick a reasonable pxPerFt like 3.
-  const defaultScale = 3;
-
+  const effectiveW = blockW + 2 * Math.max(
+    previewRoutes.left ? 50 : 20, 
+    previewRoutes.right ? 50 : 20
+  );
+  const effectiveD = blockD + 2 * Math.max(
+    previewRoutes.top ? 50 : 20, 
+    previewRoutes.bottom ? 50 : 20
+  );
+  
   return (
     <DrillDownLayout 
       canvas={
-        <CanvasViewport defaultScale={defaultScale} gridSize={store.config?.baseGridSize || 10}>
+        <CanvasViewport 
+          disablePan={true}
+          disableZoom={true}
+          gridSize={store.config?.baseGridSize || 10}
+          initialBounds={{
+            w: effectiveW,
+            h: effectiveD,
+            centerX: effectiveW / 2,
+            centerY: effectiveD / 2,
+            marginPct: 0.75 // 25% margin total
+          }}
+        >
           {({ scale, offsetX, offsetY, containerSize }: any) => renderCanvasContent(scale, offsetX, offsetY, containerSize)}
         </CanvasViewport>
       }

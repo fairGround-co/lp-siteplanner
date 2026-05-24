@@ -12,6 +12,15 @@ interface CanvasViewportProps {
   minScale?: number;
   maxScale?: number;
   gridSize?: number;
+  disablePan?: boolean;
+  disableZoom?: boolean;
+  initialBounds?: {
+    w: number;
+    h: number;
+    centerX: number;
+    centerY: number;
+    marginPct?: number; // e.g. 0.8 for 20% total margin
+  };
 }
 
 export function CanvasViewport({ 
@@ -19,12 +28,16 @@ export function CanvasViewport({
   defaultScale = 1, 
   minScale = 0.5, 
   maxScale = 20,
-  gridSize = 10 
+  gridSize = 10,
+  disablePan = false,
+  disableZoom = false,
+  initialBounds
 }: CanvasViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
   const [scale, setScale] = useState(defaultScale);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const initialized = useRef(false);
   
   const [isDragging, setIsDragging] = useState(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
@@ -41,14 +54,30 @@ export function CanvasViewport({
     return () => obs.disconnect();
   }, []);
 
-  // Center initially
+  // Center and scale initially
   useEffect(() => {
-    if (containerSize.w > 0 && containerSize.h > 0 && offset.x === 0 && offset.y === 0) {
-      setOffset({ x: containerSize.w / 2, y: containerSize.h / 2 });
+    if (containerSize.w > 0 && containerSize.h > 0 && !initialized.current) {
+      initialized.current = true;
+      if (initialBounds) {
+        const margin = initialBounds.marginPct || 0.8;
+        const s = Math.min(
+          (containerSize.w * margin) / initialBounds.w,
+          (containerSize.h * margin) / initialBounds.h,
+          maxScale
+        );
+        setScale(s);
+        setOffset({
+          x: containerSize.w / 2 - initialBounds.centerX * s,
+          y: containerSize.h / 2 - initialBounds.centerY * s
+        });
+      } else {
+        setOffset({ x: containerSize.w / 2, y: containerSize.h / 2 });
+      }
     }
-  }, [containerSize.w, containerSize.h]);
+  }, [containerSize.w, containerSize.h, initialBounds, maxScale]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (disableZoom) return;
     e.preventDefault();
     const zoomSensitivity = 0.001;
     const delta = -e.deltaY * zoomSensitivity;
@@ -73,6 +102,7 @@ export function CanvasViewport({
   }, [minScale, maxScale]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (disablePan) return;
     if (e.button !== 0 && e.button !== 1) return; // Only left or middle click
     if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT') return;
     
@@ -111,7 +141,7 @@ export function CanvasViewport({
         height: '100%', 
         position: 'relative', 
         overflow: 'hidden',
-        cursor: isDragging ? 'grabbing' : 'grab',
+        cursor: disablePan ? 'default' : isDragging ? 'grabbing' : 'grab',
         backgroundImage: `linear-gradient(var(--border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)`,
         backgroundSize: `${gridPx}px ${gridPx}px`,
         backgroundPosition: `${bgOffsetX}px ${bgOffsetY}px`,
