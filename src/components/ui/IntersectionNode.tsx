@@ -229,11 +229,8 @@ export function IntersectionNode({
     }
     if (isInsideDrivingBox) return 'drive_lane';
     if (has('drive_lane')) return 'drive_lane';
+    if (has('parking_lane')) return 'drive_lane';
     if (has('lawn_strip')) return 'lawn_strip';
-    if (has('parking_lane')) {
-      if (v_el.type === 'parking_lane' && h_el.type === 'parking_lane') return 'lawn_strip';
-      return 'drive_lane';
-    }
     return 'none';
   };
 
