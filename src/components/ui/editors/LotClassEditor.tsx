@@ -56,6 +56,7 @@ export function LotClassEditor({ id }: { id?: string }) {
   }, []);
   const [activeOverride, setActiveOverride] = useState<'front' | 'rear' | 'side' | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
+  const [isHudOpen, setIsHudOpen] = useState(true);
   const overridesRef = useRef<HTMLDivElement>(null);
 
   const [previewRoutes, setPreviewRoutes] = useState<{
@@ -218,13 +219,15 @@ export function LotClassEditor({ id }: { id?: string }) {
     const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
     const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
-    // Center the fit bounds within the container
-    const centerOffsetX = px(ext + leftRouteW + blockW / 2);
-    const centerOffsetY = px(ext + topRouteW + blockD / 2);
-
-    // Use exact integer pixel snapping to prevent blurry CSS transform alignment
-    const blockOffsetX = Math.floor(containerSize.w / 2 - centerOffsetX);
-    const blockOffsetY = Math.floor(containerSize.h / 2 - centerOffsetY);
+    // Center the entire visible route+lot bounding box, not just the block itself
+    const boundingCenterX = ext + (leftRouteW + blockW + rightRouteW) / 2;
+    const boundingCenterY = ext + (topRouteW + blockD + bottomRouteW) / 2;
+    
+    // Shift the apparent center left by half the HUD width to visually balance the container
+    const hudShiftPx = isHudOpen ? 120 : 0; 
+    
+    const blockOffsetX = Math.floor(containerSize.w / 2 - px(boundingCenterX) - hudShiftPx);
+    const blockOffsetY = Math.floor(containerSize.h / 2 - px(boundingCenterY));
 
     // We export these so they can be passed to DrillDownLayout canvasStyle
     const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
@@ -469,9 +472,9 @@ export function LotClassEditor({ id }: { id?: string }) {
              {/* Lot Area HUD */}
              <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                 <div style={{
-                  padding: '8px 12px',
                   background: 'var(--bg-canvas)',
                   border: `2px solid ${(() => {
+                    if (!isHudOpen) return 'var(--border-strong)';
                     const hasDepthError = lot.maxDepth < lot.minDepth;
                     const hasWidthError = lot.maxWidth < lot.minWidth;
                     const hasGridWarn = lot.targetWidth % gridIncrement !== 0 || lot.targetDepth % gridIncrement !== 0 || lot.minDepth % gridIncrement !== 0 || lot.maxDepth % gridIncrement !== 0 || lot.minWidth % gridIncrement !== 0 || lot.maxWidth % gridIncrement !== 0;
@@ -479,48 +482,61 @@ export function LotClassEditor({ id }: { id?: string }) {
                   })()}`,
                   borderRadius: '4px',
                   color: 'var(--text-primary)',
-                  fontSize: '0.85rem',
                   boxShadow: 'var(--shadow)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px',
-                  minWidth: '200px'
+                  minWidth: isHudOpen ? '200px' : 'auto'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
-                     <span>Gross Lot Area</span>
-                     <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
+                  <div 
+                    onClick={() => setIsHudOpen(!isHudOpen)} 
+                    style={{ 
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                      padding: '8px 12px', cursor: 'pointer', borderBottom: isHudOpen ? '1px solid var(--border-subtle)' : 'none'
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold', fontSize: '0.85rem', marginRight: isHudOpen ? '16px' : '0' }}>Lot Area Stats</span>
+                    <span style={{ transform: isHudOpen ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.2s', opacity: 0.5, fontSize: '0.7rem' }}>▼</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                     <span>Dimensions</span>
-                     <span>{width}' x {depth}'</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', paddingTop: '4px', marginBottom: '2px', marginTop: '2px' }}>
-                     <span>Buildable Area</span>
-                     <span>{(() => {
-                        const sb = evaluateSetbacks(0, 2);
-                        const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
-                        const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
-                        return Math.round(bW * bD).toLocaleString() + ' sq ft';
-                     })()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                     <span>Env. Dimensions</span>
-                     <span>{(() => {
-                        const sb = evaluateSetbacks(0, 2);
-                        const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
-                        const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
-                        return `${bW}' x ${bD}'`;
-                     })()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                     <span>% of Gross Area</span>
-                     <span>{(() => {
-                        const sb = evaluateSetbacks(0, 2);
-                        const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
-                        const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
-                        return Math.round((bW * bD) / (width * depth) * 100);
-                     })()}%</span>
-                  </div>
+                  
+                  {isHudOpen && (
+                    <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', marginBottom: '2px' }}>
+                         <span>Gross Lot Area</span>
+                         <span>{Math.round(width * depth).toLocaleString()} sq ft</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                         <span>Dimensions</span>
+                         <span>{width}' x {depth}'</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '4px', paddingTop: '4px', marginBottom: '2px', marginTop: '2px' }}>
+                         <span>Buildable Area</span>
+                         <span>{(() => {
+                            const sb = evaluateSetbacks(0, 2);
+                            const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                            const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                            return Math.round(bW * bD).toLocaleString() + ' sq ft';
+                         })()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                         <span>Env. Dimensions</span>
+                         <span>{(() => {
+                            const sb = evaluateSetbacks(0, 2);
+                            const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                            const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                            return `${bW}' x ${bD}'`;
+                         })()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                         <span>% of Gross Area</span>
+                         <span>{(() => {
+                            const sb = evaluateSetbacks(0, 2);
+                            const bW = Math.max(0, width - sb.left.dist - sb.right.dist);
+                            const bD = Math.max(0, depth - sb.top.dist - sb.bottom.dist);
+                            return Math.round((bW * bD) / (width * depth) * 100);
+                         })()}%</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
              </div>
 
