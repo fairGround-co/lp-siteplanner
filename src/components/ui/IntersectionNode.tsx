@@ -147,20 +147,50 @@ export function RouteLeg({
         const isMedian = el.type === 'lawn_strip' && i > firstDrive && i < lastDrive && effectiveSectionType === 'setback';
 
         if (isPreemptedParking) {
+          // Only round the corner(s) adjacent to the active vehicular lane,
+          // NOT the corner adjacent to sidewalk/lawn strip.
+          // prevVehic = the neighbor closer to element index 0 is vehicular
+          // nextVehic = the neighbor closer to end of array is vehicular
           if (isHorizontal) {
+            // Horizontal RouteLeg: elements stack top-to-bottom.
+            // "prev" (top neighbor) and "next" (bottom neighbor)
             if (position === 'left') {
-              maskImage = `radial-gradient(circle at 100% 0%, transparent ${r}px, black ${r}px), radial-gradient(circle at 100% 100%, transparent ${r}px, black ${r}px)`;
+              // The rounding edge faces right (toward intersection).
+              // Only round top-right if prev is vehicular, bottom-right if next is vehicular.
+              const masks: string[] = [];
+              if (prevVehic) masks.push(`radial-gradient(circle at 100% 0%, transparent ${r}px, black ${r}px)`);
+              if (nextVehic) masks.push(`radial-gradient(circle at 100% 100%, transparent ${r}px, black ${r}px)`);
+              if (masks.length > 0) {
+                maskImage = masks.join(', ');
+              }
               bLeft = curb;
             } else if (position === 'right') {
-              maskImage = `radial-gradient(circle at 0% 0%, transparent ${r}px, black ${r}px), radial-gradient(circle at 0% 100%, transparent ${r}px, black ${r}px)`;
+              const masks: string[] = [];
+              if (prevVehic) masks.push(`radial-gradient(circle at 0% 0%, transparent ${r}px, black ${r}px)`);
+              if (nextVehic) masks.push(`radial-gradient(circle at 0% 100%, transparent ${r}px, black ${r}px)`);
+              if (masks.length > 0) {
+                maskImage = masks.join(', ');
+              }
               bRight = curb;
             }
           } else {
+            // Vertical RouteLeg: elements stack left-to-right.
+            // "prev" (left neighbor) and "next" (right neighbor)
             if (position === 'top') {
-              maskImage = `radial-gradient(circle at 0% 100%, transparent ${r}px, black ${r}px), radial-gradient(circle at 100% 100%, transparent ${r}px, black ${r}px)`;
+              const masks: string[] = [];
+              if (prevVehic) masks.push(`radial-gradient(circle at 0% 100%, transparent ${r}px, black ${r}px)`);
+              if (nextVehic) masks.push(`radial-gradient(circle at 100% 100%, transparent ${r}px, black ${r}px)`);
+              if (masks.length > 0) {
+                maskImage = masks.join(', ');
+              }
               bTop = curb;
             } else if (position === 'bottom') {
-              maskImage = `radial-gradient(circle at 0% 0%, transparent ${r}px, black ${r}px), radial-gradient(circle at 100% 0%, transparent ${r}px, black ${r}px)`;
+              const masks: string[] = [];
+              if (prevVehic) masks.push(`radial-gradient(circle at 0% 0%, transparent ${r}px, black ${r}px)`);
+              if (nextVehic) masks.push(`radial-gradient(circle at 100% 0%, transparent ${r}px, black ${r}px)`);
+              if (masks.length > 0) {
+                maskImage = masks.join(', ');
+              }
               bBottom = curb;
             }
           }
@@ -397,15 +427,45 @@ export function IntersectionNode({
       }
 
       if (type === 'lawn_strip') {
-        const rightType = v_i < N_V - 1 ? getIntCellType(v_i + 1, h_i) : null;
-        if (rightType === 'drive_lane' || rightType === 'crosswalk') { tr = r; br = r; bRight = curb; }
+        // Determine if this lawn_strip is a median (sandwiched between drive lanes
+        // along one axis). Medians should only round at their terminal ends,
+        // not on the sides flanking the drive lanes.
         const leftType = v_i > 0 ? getIntCellType(v_i - 1, h_i) : null;
-        if (leftType === 'drive_lane' || leftType === 'crosswalk') { tl = r; bl = r; bLeft = curb; }
-
-        const bottomType = h_i < N_H - 1 ? getIntCellType(v_i, h_i + 1) : null;
-        if (bottomType === 'drive_lane' || bottomType === 'crosswalk') { bl = r; br = r; bBottom = curb; }
+        const rightType = v_i < N_V - 1 ? getIntCellType(v_i + 1, h_i) : null;
         const topType = h_i > 0 ? getIntCellType(v_i, h_i - 1) : null;
-        if (topType === 'drive_lane' || topType === 'crosswalk') { tl = r; tr = r; bTop = curb; }
+        const bottomType = h_i < N_H - 1 ? getIntCellType(v_i, h_i + 1) : null;
+
+        const leftIsDrive = leftType === 'drive_lane' || leftType === 'crosswalk';
+        const rightIsDrive = rightType === 'drive_lane' || rightType === 'crosswalk';
+        const topIsDrive = topType === 'drive_lane' || topType === 'crosswalk';
+        const bottomIsDrive = bottomType === 'drive_lane' || bottomType === 'crosswalk';
+
+        // A horizontal median has drive lanes on both left and right
+        const isHorizMedian = leftIsDrive && rightIsDrive;
+        // A vertical median has drive lanes on both top and bottom
+        const isVertMedian = topIsDrive && bottomIsDrive;
+
+        if (isHorizMedian) {
+          // Continuous horizontal median: only round at top/bottom terminal ends,
+          // and add straight curb lines on the left/right sides.
+          bLeft = curb;
+          bRight = curb;
+          if (topIsDrive) { tl = r; tr = r; bTop = curb; }
+          if (bottomIsDrive) { bl = r; br = r; bBottom = curb; }
+        } else if (isVertMedian) {
+          // Continuous vertical median: only round at left/right terminal ends,
+          // and add straight curb lines on the top/bottom sides.
+          bTop = curb;
+          bBottom = curb;
+          if (leftIsDrive) { tl = r; bl = r; bLeft = curb; }
+          if (rightIsDrive) { tr = r; br = r; bRight = curb; }
+        } else {
+          // Standalone lawn_strip island — round toward any adjacent driving surface
+          if (rightIsDrive) { tr = r; br = r; bRight = curb; }
+          if (leftIsDrive) { tl = r; bl = r; bLeft = curb; }
+          if (bottomIsDrive) { bl = r; br = r; bBottom = curb; }
+          if (topIsDrive) { tl = r; tr = r; bTop = curb; }
+        }
       }
 
       cells.push(
