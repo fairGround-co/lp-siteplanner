@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { RouteClass, RouteElement, RouteElementType } from '../../../types';
@@ -99,19 +99,21 @@ export function RouteClassEditor({ id }: { id?: string }) {
     }
   }, [id, store.routeClasses]);
 
-  const canvasRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
-
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(entries => {
-      for (let e of entries) {
-        setContainerSize({ w: e.contentRect.width, h: e.contentRect.height });
-      }
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
+  const observer = useRef<ResizeObserver | null>(null);
+  const canvasRef = useCallback((el: HTMLDivElement | null) => {
+    if (observer.current) {
+      observer.current.disconnect();
+      observer.current = null;
+    }
+    if (el) {
+      observer.current = new ResizeObserver(entries => {
+        for (let e of entries) {
+          setContainerSize({ w: e.contentRect.width, h: e.contentRect.height });
+        }
+      });
+      observer.current.observe(el);
+    }
   }, []);
 
   if (!route) return null;
@@ -183,8 +185,8 @@ export function RouteClassEditor({ id }: { id?: string }) {
     const statusColor = isValid ? 'var(--color-success)' : 'var(--color-warning)';
     const w_px = route.crossSection.elements.reduce((acc, el) => acc + Math.round(el.targetWidth * pxPerFt), 0);
 
-    let anchorX = 0;
-    let anchorY = 0;
+    let anchorX: number | undefined = undefined;
+    let anchorY: number | undefined = undefined;
     if (containerSize.w > 0 && containerSize.h > 0) {
       const idealX = containerSize.w / 2 - w_px / 2;
       const idealY = containerSize.h / 2 - w_px / 2;
