@@ -6,6 +6,7 @@ import type { LotClass } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
 import { ColorSwatchPicker } from '../ColorSwatchPicker';
 import { RouteLeg, IntersectionNode } from '../IntersectionNode';
+import { ArchitecturalScale } from '../ArchitecturalScale';
 
 export function LotClassEditor({ id }: { id?: string }) {
   const store = usePlannerStore();
@@ -197,6 +198,13 @@ export function LotClassEditor({ id }: { id?: string }) {
     const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
     const gridOffsetY = blockOffsetY + px(ext + topRouteW);
 
+    const gridPx = px(gridIncrement);
+    const scaleIdealLeft = 40;
+    const scaleAlignedLeft = gridOffsetX + Math.ceil((scaleIdealLeft - gridOffsetX) / gridPx) * gridPx;
+    
+    const scaleIdealTop = containerSize.h - 80;
+    const scaleAlignedTop = gridOffsetY + Math.floor((scaleIdealTop - gridOffsetY) / gridPx) * gridPx;
+
     const evaluateSetbacks = (row: 0 | 1, col: number) => {
        const adjTop = row === 0 ? (previewRoutes.top || 'LOT') : 'LOT';
        const adjBottom = row === 1 ? (previewRoutes.bottom || 'LOT') : 'LOT';
@@ -257,10 +265,9 @@ export function LotClassEditor({ id }: { id?: string }) {
             onMouseLeave={() => setHoveredField(null)}
             style={{
               position: 'absolute', top: px(t), left: px(l), width: px(rw), height: px(rh),
-              background: rc ? 'transparent' : 'var(--bg-modifier-active)',
+              background: rc ? (isHovered ? 'rgba(255,255,255,0.15)' : 'transparent') : (isHovered ? 'var(--bg-modifier-hover)' : 'var(--bg-modifier-active)'),
               border: rc ? 'none' : `1px solid var(--border-subtle)`,
               cursor: 'pointer',
-              outline: isHovered ? '2px solid var(--text-primary)' : 'none',
               zIndex: 10,
               overflow: 'hidden'
             }}>
@@ -425,22 +432,12 @@ export function LotClassEditor({ id }: { id?: string }) {
             </div>
             
             {/* Scale Reference Bar */}
-            <div style={{ position: 'absolute', bottom: '40px', left: '40px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-               <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
-                 1 Grid Cell = {gridIncrement}'
-               </span>
-               <div style={{ display: 'flex', border: '1px solid var(--text-primary)', borderTop: 'none', height: '8px', width: `${px(gridIncrement) * 4}px`, boxSizing: 'border-box' }}>
-                  <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
-                  <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
-                  <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
-                  <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
-               </div>
-               <div style={{ display: 'flex', width: `${px(gridIncrement) * 4}px`, justifyContent: 'space-between', color: 'var(--text-primary)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
-                  <span>0</span>
-                  <span>{gridIncrement * 2}'</span>
-                  <span>{gridIncrement * 4}'</span>
-               </div>
-            </div>
+            <ArchitecturalScale 
+              gridIncrement={gridIncrement} 
+              gridPx={px(gridIncrement)} 
+              alignedTop={scaleAlignedTop} 
+              alignedLeft={scaleAlignedLeft} 
+            />
             <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX, width: px(totalW), height: px(totalD) }}>
                {/* Routes (Continuous segments between intersections) */}
                <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW - 2*setbackDist} rh={topRouteW} t={ext} l={ext + leftRouteW + setbackDist} />
@@ -450,16 +447,16 @@ export function LotClassEditor({ id }: { id?: string }) {
 
                {/* Route Intersections (Corners only, perfectly sizing out the legs) */}
                <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={ext} anchorY={ext} />
+                 w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={px(ext)} anchorY={px(ext)} />
                  
                <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} 
-                 w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={ext} />
+                 w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={px(setbackDist)} anchorY={px(ext)} />
                  
                <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={ext} anchorY={setbackDist} />
+                 w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={px(ext)} anchorY={px(setbackDist)} />
                  
                <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} 
-                 w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={setbackDist} />
+                 w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={px(setbackDist)} anchorY={px(setbackDist)} />
 
                <div style={{ position: 'absolute', top: px(ext + topRouteW), left: px(ext + leftRouteW), width: px(blockW), height: px(blockD) }}>
                   {renderLots()}

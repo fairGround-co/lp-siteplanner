@@ -4,6 +4,7 @@ import { usePlannerStore } from '../../../store/usePlannerStore';
 import type { RouteClass, RouteElement, RouteElementType } from '../../../types';
 import { DrillDownLayout } from '../DrillDownLayout';
 import { IntersectionNode } from '../IntersectionNode';
+import { ArchitecturalScale } from '../ArchitecturalScale';
 
 
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Copy } from 'lucide-react';
@@ -275,12 +276,24 @@ export function RouteClassEditor({ id }: { id?: string }) {
 
     let anchorX: number | undefined = undefined;
     let anchorY: number | undefined = undefined;
+    let scaleAlignedLeft = 0;
+    let scaleAlignedTop = 0;
+    
     if (containerSize.w > 0 && containerSize.h > 0) {
       const idealX = containerSize.w / 2 - w_px / 2;
       const idealY = containerSize.h / 2 - w_px / 2;
       // Snap TOP-LEFT corner to grid
       anchorX = Math.round(idealX / pxPerGrid) * pxPerGrid;
       anchorY = Math.round(idealY / pxPerGrid) * pxPerGrid;
+      
+      const gridOffsetX = anchorX % pxPerGrid;
+      const gridOffsetY = anchorY % pxPerGrid;
+
+      const scaleIdealLeft = 40;
+      scaleAlignedLeft = gridOffsetX + Math.ceil((scaleIdealLeft - gridOffsetX) / pxPerGrid) * pxPerGrid;
+        
+      const scaleIdealTop = containerSize.h - 80;
+      scaleAlignedTop = gridOffsetY + Math.floor((scaleIdealTop - gridOffsetY) / pxPerGrid) * pxPerGrid;
     }
 
     return (
@@ -337,22 +350,12 @@ export function RouteClassEditor({ id }: { id?: string }) {
          />
 
          {/* Scale Reference Bar */}
-         <div style={{ position: 'absolute', bottom: '40px', left: '40px', zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-            <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
-              1 Grid Cell = {gridFt}'
-            </span>
-            <div style={{ display: 'flex', border: '1px solid var(--text-primary)', borderTop: 'none', height: '8px', width: `${pxPerGrid * 4}px`, boxSizing: 'border-box' }}>
-               <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
-               <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
-               <div style={{ flex: 1, backgroundColor: 'var(--text-primary)' }}></div>
-               <div style={{ flex: 1, backgroundColor: 'transparent' }}></div>
-            </div>
-            <div style={{ display: 'flex', width: `${pxPerGrid * 4}px`, justifyContent: 'space-between', color: 'var(--text-primary)', fontSize: '0.7rem', marginTop: '2px', fontWeight: 'bold', textShadow: '0 1px 2px var(--bg-primary)' }}>
-               <span>0</span>
-               <span>{gridFt * 2}'</span>
-               <span>{gridFt * 4}'</span>
-            </div>
-         </div>
+         <ArchitecturalScale 
+           gridIncrement={gridFt} 
+           gridPx={pxPerGrid} 
+           alignedTop={scaleAlignedTop} 
+           alignedLeft={scaleAlignedLeft} 
+         />
       </div>
     );
   };
