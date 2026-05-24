@@ -63,6 +63,21 @@ export function RouteLeg({
   const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
   const lastDrive = [...route.crossSection.elements].findLastIndex((el) => el.type === 'drive_lane');
 
+  const effectiveWidths = [...route.crossSection.elements.map(el => el.targetWidth)];
+  for (let i = 0; i < route.crossSection.elements.length - 1; i++) {
+    const el = route.crossSection.elements[i];
+    const nextEl = route.crossSection.elements[i + 1];
+    if (el.type === 'parking_lane' && nextEl.type === 'parking_lane') {
+      const angle1 = el.parkingAngle || 0;
+      const angle2 = nextEl.parkingAngle || 0;
+      if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
+        const overlapAmt = (config.parkingStallWidth || 9) * Math.cos(angle1 * Math.PI / 180);
+        effectiveWidths[i] -= overlapAmt / 2;
+        effectiveWidths[i + 1] -= overlapAmt / 2;
+      }
+    }
+  }
+
   // Which edge faces the setback/intersection?
   // position='top' → bottom edge; 'left' → right edge; 'right' → left edge; 'bottom' → top edge
   const setbackEdge = position === 'top' ? 'bottom' : position === 'bottom' ? 'top' : position === 'left' ? 'right' : 'left';
@@ -127,22 +142,6 @@ export function RouteLeg({
             const divider = getLaneDivider(el, prevEl);
             if (isHorizontal) bTop = divider;
             else bLeft = divider;
-          }
-        }
-
-        let effectiveW = el.targetWidth;
-        if (el.type === 'parking_lane') {
-          const angle = el.parkingAngle || 0;
-          if (angle > 0 && angle < 90) {
-            const rad = angle * Math.PI / 180;
-            const stallWidth = config.parkingStallWidth || 9;
-            const overlapAmt = stallWidth * Math.cos(rad);
-            if (prevEl?.type === 'parking_lane' && prevEl.parkingAngle === angle) {
-              effectiveW -= overlapAmt / 2;
-            }
-            if (nextEl?.type === 'parking_lane' && nextEl.parkingAngle === angle) {
-              effectiveW -= overlapAmt / 2;
-            }
           }
         }
 
@@ -260,16 +259,6 @@ export function RouteLeg({
 
         const hasRadius = isPreemptedParking && (brTL !== '0' || brTR !== '0' || brBL !== '0' || brBR !== '0');
 
-        let label: string | null = arrow;
-        let labelColor = 'rgba(255,255,255,0.7)';
-        
-        if (el.type === 'parking_lane' && effectiveSectionType === 'leg') {
-            if (effectiveW !== el.targetWidth) {
-               label = `${Math.round(effectiveW * 10)/10}'`;
-               labelColor = '#eab308'; // orange
-            }
-        }
-
         return (
           <div
             key={el.id}
@@ -301,9 +290,9 @@ export function RouteLeg({
             data-type={el.type}
             data-direction={el.direction || 'right'}
             style={{
-              flex: `0 0 ${px(effectiveW)}px`,
-              width: isHorizontal ? '100%' : `${px(effectiveW)}px`,
-              height: isHorizontal ? `${px(effectiveW)}px` : '100%',
+              flex: `0 0 ${px(el.targetWidth)}px`,
+              width: isHorizontal ? '100%' : `${px(el.targetWidth)}px`,
+              height: isHorizontal ? `${px(el.targetWidth)}px` : '100%',
               overflow: 'visible',
               cursor: interactive && sectionType === 'leg' ? 'grab' : 'default',
               opacity: interactive && draggedIndex === i ? 0.5 : 1,
@@ -326,18 +315,17 @@ export function RouteLeg({
                 alignItems: 'center',
                 justifyContent: 'center',
                 position: 'relative',
+                borderTop: bTop,
+                borderBottom: bBottom,
+                borderLeft: bLeft,
+                borderRight: bRight,
+                borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`,
               }}
             >
-              {isPreemptedParking && effectiveSectionType === 'setback' ? (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: `${brTL} ${brTR} ${brBR} ${brBL}`, backgroundColor: grassColor, borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight, boxSizing: 'border-box' }} />
-              ) : (
-                <div style={{ position: 'absolute', inset: 0, borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight, boxSizing: 'border-box', pointerEvents: 'none' }} />
-              )}
-              {nibbles}
               {(!isHorizontal && sectionType === 'leg') && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
-                  {label && <span style={{ color: labelColor, fontSize: '1.2rem' }}>{label}</span>}
-                  <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
+                  {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
+                  <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
                     {el.type.replace('_', ' ')}
                   </span>
@@ -348,10 +336,11 @@ export function RouteLeg({
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>
                     {el.type.replace('_', ' ')}
                   </span>
-                  <span style={{ color: 'white', fontWeight: 'bold' }}>{el.targetWidth}'</span>
-                  {label && <span style={{ color: labelColor, fontSize: '1.2rem', transform: 'rotate(-90deg)' }}>{label}</span>}
+                  <span style={{ color: 'white', fontWeight: 'bold' }}>{Math.round(effectiveWidths[i] * 10) / 10}'</span>
+                  {arrow && <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.2rem' }}>{arrow}</span>}
                 </div>
               )}
+              {nibbles}
               {isHovered && (
                 <div style={{ position: 'absolute', bottom: '40px', background: 'rgba(0,0,0,0.8)', padding: '4px 8px', borderRadius: '4px', color: '#4ade80', fontSize: '0.9rem', width: 'max-content', textAlign: 'center', pointerEvents: 'none', zIndex: 10 }}>
                   Min {el.minWidth}' / Max {el.maxWidth}'
