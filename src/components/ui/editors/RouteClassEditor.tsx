@@ -179,22 +179,40 @@ export function RouteClassEditor({ id }: { id?: string }) {
     const pxPerGrid = 40;
     const pxPerFt = pxPerGrid / gridFt;
     
-    const totalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
+    let baseTotalWidth = route.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
+    let overlapReduction = 0;
 
     const errors: string[] = [];
     const warnings: string[] = [];
-
-    if (totalWidth % (store.config?.baseGridSize || 12) !== 0) {
-      warnings.push(`WARNING: Total width is not a multiple of the base grid size (${store.config?.baseGridSize || 12}')`);
-    }
 
     route.crossSection.elements.forEach((el, i) => {
       if (el.type === 'parking_lane') {
         const hasPrevDrive = route.crossSection.elements[i - 1]?.type === 'drive_lane';
         const hasNextDrive = route.crossSection.elements[i + 1]?.type === 'drive_lane';
         const adjacentDrives = (hasPrevDrive ? 1 : 0) + (hasNextDrive ? 1 : 0);
+        
+        let driveLane: typeof el | undefined;
+        if (hasPrevDrive) driveLane = route.crossSection.elements[i - 1];
+        if (hasNextDrive) driveLane = route.crossSection.elements[i + 1];
+
         if (adjacentDrives !== 1) {
           errors.push(`ERROR: Parking lane at index ${i} must have EXACTLY ONE adjacent drive lane`);
+        } else if (driveLane) {
+          const isTwoWay = route.crossSection.trafficFlow === 'two_way' || driveLane.direction === 'yield';
+          const angle = Math.abs(el.parkingAngle || 0);
+          let minAisle = 20; // Default for two-way
+          if (!isTwoWay) {
+            if (angle === 0) minAisle = 10.5;
+            else if (angle <= 30) minAisle = 11;
+            else if (angle <= 45) minAisle = 12;
+            else if (angle <= 60) minAisle = 16;
+            else if (angle <= 90) minAisle = 20;
+          } else {
+            minAisle = 20; // 20 ft for all angles if two-way
+          }
+          if (driveLane.targetWidth < minAisle) {
+            warnings.push(`WARNING: Drive lane adjacent to ${angle}° parking should be at least ${minAisle}' wide for maneuverability.`);
+          }
         }
         
         const nextEl = route.crossSection.elements[i + 1];
@@ -204,17 +222,29 @@ export function RouteClassEditor({ id }: { id?: string }) {
           const isNonOrthogonal1 = angle1 > 0 && angle1 < 90;
           const isNonOrthogonal2 = angle2 > 0 && angle2 < 90;
           if (isNonOrthogonal1 && isNonOrthogonal2) {
-            warnings.push(`WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.`);
+            if (angle1 === angle2) {
+              const rad = angle1 * Math.PI / 180;
+              const stallWidth = store.config?.parkingStallWidth || 9;
+              overlapReduction += (stallWidth * Math.cos(rad));
+            } else {
+              warnings.push(`WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.`);
+            }
           }
         }
       }
     });
 
+    const totalWidth = Math.round((baseTotalWidth - overlapReduction) * 10) / 10;
+
+    if (totalWidth % (store.config?.baseGridSize || 12) !== 0) {
+      warnings.push(`WARNING: Total width is not a multiple of the base grid size (${store.config?.baseGridSize || 12}')`);
+    }
+
     let statusColor = 'var(--color-success)';
     if (warnings.length > 0) statusColor = 'var(--color-warning)';
     if (errors.length > 0) statusColor = 'var(--color-danger)';
 
-    const w_px = route.crossSection.elements.reduce((acc, el) => acc + Math.round(el.targetWidth * pxPerFt), 0);
+    const w_px = Math.round(totalWidth * pxPerFt);
 
     let anchorX: number | undefined = undefined;
     let anchorY: number | undefined = undefined;

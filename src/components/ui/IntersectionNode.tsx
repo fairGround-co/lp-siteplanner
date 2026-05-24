@@ -2,13 +2,19 @@ import React from 'react';
 import type { RouteClass, RouteElement, SystemConfig } from '../../types';
 import { getLaneColor, getParkingStripeBackground } from './styleUtils';
 
-export function getLaneDivider(el1: RouteElement, el2: RouteElement) {
-  if (!el1 || !el2) return 'none';
-  const isOpposite = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction !== el2.direction;
-  const isSame = el1.type === 'drive_lane' && el2.type === 'drive_lane' && el1.direction === el2.direction;
-  if (isOpposite) return '3px double #eab308';
-  if (isSame) return '2px dashed rgba(255,255,255,0.5)';
-  if (el1.type === 'parking_lane' && el2.type === 'parking_lane') return `2px solid ${getLaneColor('sidewalk')}`;
+export function getLaneDivider(el1: any, el2: any): string {
+  if (el1.type === 'drive_lane' && el2.type === 'drive_lane') {
+    if (el1.direction !== el2.direction) return '3px double #eab308';
+    return '2px dashed rgba(255, 255, 255, 0.5)';
+  }
+  if (el1.type === 'parking_lane' && el2.type === 'parking_lane') {
+    const angle1 = el1.parkingAngle || 0;
+    const angle2 = el2.parkingAngle || 0;
+    if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
+      return `2px dashed rgba(170, 170, 170, 0.3)`; // Interlocked stagger
+    }
+    return `2px solid ${getLaneColor('sidewalk')}`;
+  }
   return 'none';
 }
 
@@ -591,8 +597,29 @@ export function IntersectionNode({
   const leftArm = anchorX !== undefined ? Math.max(0, anchorX - px(setbackDist)) + 'px' : '1fr';
   const topArm = anchorY !== undefined ? Math.max(0, anchorY - px(setbackDist)) + 'px' : '1fr';
   
-  const gridCols = `${leftArm} ${px(setbackDist)}px ${routeV.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
-  const gridRows = `${topArm} ${px(setbackDist)}px ${routeH.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
+  const getTrackSizes = (elements: any[]) => {
+    const sizes = elements.map(el => px(el.targetWidth));
+    for (let i = 0; i < elements.length - 1; i++) {
+      const el = elements[i];
+      const nextEl = elements[i + 1];
+      if (el.type === 'parking_lane' && nextEl.type === 'parking_lane') {
+        const angle1 = el.parkingAngle || 0;
+        const angle2 = nextEl.parkingAngle || 0;
+        if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
+          const rad = angle1 * Math.PI / 180;
+          const stallWidth = config.parkingStallWidth || 9;
+          const overlapPx = px(stallWidth * Math.cos(rad));
+          const half = Math.round(overlapPx / 2);
+          sizes[i] -= half;
+          sizes[i + 1] -= (overlapPx - half);
+        }
+      }
+    }
+    return sizes.map(sz => `${sz}px`).join(' ');
+  };
+
+  const gridCols = `${leftArm} ${px(setbackDist)}px ${getTrackSizes(routeV.crossSection.elements)} ${px(setbackDist)}px 1fr`;
+  const gridRows = `${topArm} ${px(setbackDist)}px ${getTrackSizes(routeH.crossSection.elements)} ${px(setbackDist)}px 1fr`;
 
   return (
     <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
