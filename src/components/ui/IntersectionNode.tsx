@@ -59,7 +59,7 @@ export function RouteLeg({
   onMouseLeaveLane,
   hideLabels = false,
 }: RouteLegProps) {
-  const px = (ft: number) => Math.round(ft * pxPerFt);
+  const px = (ft: number) => ft * pxPerFt;
   const cosmeticR = px(config.cosmeticCurbRadius ?? 2);
   const grassColor = getLaneColor('lawn_strip');
   const firstDrive = route.crossSection.elements.findIndex((el) => el.type === 'drive_lane');
@@ -367,7 +367,7 @@ export function IntersectionNode({
   isTIntersection = false,
   ...interactionProps
 }: any) {
-  const px = (ft: number) => Math.round(ft * pxPerFt);
+  const px = (ft: number) => ft * pxPerFt;
   const N_V = routeV.crossSection.elements.length;
   const N_H = routeH.crossSection.elements.length;
   const curb = `${px(config.curbThickness ?? 0.5)}px solid ${getLaneColor('sidewalk')}`;

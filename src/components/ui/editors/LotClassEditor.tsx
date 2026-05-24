@@ -297,21 +297,24 @@ export function LotClassEditor({ id }: { id?: string }) {
             onMouseLeave={() => setHoveredField(null)}
             style={{
               position: 'absolute', top: px(t), left: px(l), width: px(rw), height: px(rh),
-              background: rc ? (isHovered ? 'rgba(255,255,255,0.15)' : 'transparent') : (isHovered ? 'var(--bg-modifier-hover)' : 'var(--bg-modifier-active)'),
+              background: rc ? 'transparent' : (isHovered ? 'var(--bg-modifier-hover)' : 'var(--bg-modifier-active)'),
               border: rc ? 'none' : `1px solid var(--border-subtle)`,
               cursor: 'pointer',
               zIndex: 10,
               overflow: 'hidden'
             }}>
             {rc ? (
-              <RouteLeg
-                route={rc}
-                isHorizontal={!isVertical}
-                position="leg"
-                config={store.config}
-                pxPerFt={scale}
-                hideLabels={true}
-              />
+              <>
+                <RouteLeg
+                  route={rc}
+                  isHorizontal={!isVertical}
+                  position="leg"
+                  config={store.config}
+                  pxPerFt={scale}
+                  hideLabels={true}
+                />
+                {isHovered && <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(255,255,255,0.15)', pointerEvents: 'none', zIndex: 20 }} />}
+              </>
             ) : (
               <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>None</span>
             )}
@@ -540,16 +543,16 @@ export function LotClassEditor({ id }: { id?: string }) {
 
                {/* Route Intersections (Corners only, perfectly sizing out the legs) */}
                <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={px(ext)} anchorY={px(ext)} />
+                 w={ext + leftRouteW + setbackDist} h={ext + topRouteW + setbackDist} t={0} l={0} anchorX={ext} anchorY={ext} />
                  
                <IntersectionRect routeHId={previewRoutes.top} routeVId={previewRoutes.right} 
-                 w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={px(setbackDist)} anchorY={px(ext)} />
+                 w={setbackDist + rightRouteW + ext} h={ext + topRouteW + setbackDist} t={0} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={ext} />
                  
                <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.left} 
-                 w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={px(ext)} anchorY={px(setbackDist)} />
+                 w={ext + leftRouteW + setbackDist} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={0} anchorX={ext} anchorY={setbackDist} />
                  
                <IntersectionRect routeHId={previewRoutes.bottom} routeVId={previewRoutes.right} 
-                 w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={px(setbackDist)} anchorY={px(setbackDist)} />
+                 w={setbackDist + rightRouteW + ext} h={setbackDist + bottomRouteW + ext} t={ext + topRouteW + blockD - setbackDist} l={ext + leftRouteW + blockW - setbackDist} anchorX={setbackDist} anchorY={setbackDist} />
 
                <div style={{ position: 'absolute', top: px(ext + topRouteW), left: px(ext + leftRouteW), width: px(blockW), height: px(blockD) }}>
                   {renderLots()}
