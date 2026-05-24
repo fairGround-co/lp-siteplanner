@@ -154,46 +154,49 @@ export function LotClassEditor({ id }: { id?: string }) {
   const blockW = width * 5;
   const blockD = depth * 2;
 
-  const renderCanvasContent = (scale: number, offsetX: number, offsetY: number, containerSize: { w: number, h: number }) => {
-    const px = (val: number) => val * scale;
-    
-    const getRouteWidth = (id: string | null) => {
-      if (!id) return 20;
-      const rc = store.routeClasses[id];
-      if (!rc) return 20;
-      let w = 0;
-      for (let i = 0; i < rc.crossSection.elements.length; i++) {
-        const el = rc.crossSection.elements[i];
-        w += el.targetWidth;
-        if (el.type === 'parking_lane' && rc.crossSection.elements[i+1]?.type === 'parking_lane') {
-          const angle1 = el.parkingAngle || 0;
-          const angle2 = rc.crossSection.elements[i+1].parkingAngle || 0;
-          if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
-            const rad = angle1 * Math.PI / 180;
-            const stallWidth = store.config.parkingStallWidth || 9;
-            w -= stallWidth * Math.cos(rad);
-          }
+  const getRouteWidth = (id: string | null) => {
+    if (!id) return 20;
+    const rc = store.routeClasses[id];
+    if (!rc) return 20;
+    let w = 0;
+    for (let i = 0; i < rc.crossSection.elements.length; i++) {
+      const el = rc.crossSection.elements[i];
+      w += el.targetWidth;
+      if (el.type === 'parking_lane' && rc.crossSection.elements[i+1]?.type === 'parking_lane') {
+        const angle1 = el.parkingAngle || 0;
+        const angle2 = rc.crossSection.elements[i+1].parkingAngle || 0;
+        if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
+          const rad = angle1 * Math.PI / 180;
+          const stallWidth = store.config.parkingStallWidth || 9;
+          w -= stallWidth * Math.cos(rad);
         }
       }
-      return w;
-    };
+    }
+    return w;
+  };
 
-    const topRouteW = getRouteWidth(previewRoutes.top);
-    const bottomRouteW = getRouteWidth(previewRoutes.bottom);
-    const leftRouteW = getRouteWidth(previewRoutes.left);
-    const rightRouteW = getRouteWidth(previewRoutes.right);
+  const topRouteW = getRouteWidth(previewRoutes.top);
+  const bottomRouteW = getRouteWidth(previewRoutes.bottom);
+  const leftRouteW = getRouteWidth(previewRoutes.left);
+  const rightRouteW = getRouteWidth(previewRoutes.right);
 
-    const ext = 1000;
-    const setbackDist = store.config.intersectionDaylightDistance ?? 25;
+  const ext = 1000;
+  const setbackDist = store.config.intersectionDaylightDistance ?? 25;
+
+  const renderCanvasContent = (scale: number, offsetX: number, offsetY: number, containerSize: { w: number, h: number }) => {
+    const px = (val: number) => val * scale;
+
+    const totalW = ext + leftRouteW + blockW + rightRouteW + ext;
+    const totalD = ext + topRouteW + blockD + bottomRouteW + ext;
 
     const blockCenterX = ext + leftRouteW + blockW / 2;
     const blockCenterY = ext + topRouteW + blockD / 2;
 
-    const blockOffsetX = offsetX - px(blockCenterX);
-    const blockOffsetY = offsetY - px(blockCenterY);
+    const containerOffsetX = offsetX;
+    const containerOffsetY = offsetY;
 
-    const gridOffsetX = blockOffsetX + px(ext + leftRouteW);
-    const gridOffsetY = blockOffsetY + px(ext + topRouteW);
+    const gridOffsetX = containerOffsetX + px(ext + leftRouteW);
+    const gridOffsetY = containerOffsetY + px(ext + topRouteW);
 
     const gridPx = px(gridIncrement);
     const scaleAlignedLeft = gridOffsetX + Math.ceil((40 - gridOffsetX) / gridPx) * gridPx;
@@ -433,7 +436,7 @@ export function LotClassEditor({ id }: { id?: string }) {
            <ArchitecturalScale gridIncrement={gridIncrement} gridPx={gridPx} alignedTop={scaleAlignedTop} alignedLeft={scaleAlignedLeft} />
          )}
          
-        <div style={{ position: 'absolute', top: blockOffsetY, left: blockOffsetX }}>
+        <div style={{ position: 'absolute', top: containerOffsetY, left: containerOffsetX, width: px(totalW), height: px(totalD) }}>
            <RouteRect edge="top" routeId={previewRoutes.top} rw={blockW - 2*setbackDist} rh={topRouteW} t={ext} l={ext + leftRouteW + setbackDist} />
            <RouteRect edge="bottom" routeId={previewRoutes.bottom} rw={blockW - 2*setbackDist} rh={bottomRouteW} t={ext + topRouteW + blockD} l={ext + leftRouteW + setbackDist} />
            <RouteRect edge="left" routeId={previewRoutes.left} rw={leftRouteW} rh={blockD - 2*setbackDist} t={ext + topRouteW + setbackDist} l={ext} />
@@ -449,7 +452,7 @@ export function LotClassEditor({ id }: { id?: string }) {
            </div>
 
            {activeRouteSelect && (
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', padding: '16px', borderRadius: '8px', zIndex: 100, boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '200px' }}>
+              <div style={{ position: 'absolute', top: px(blockCenterY), left: px(blockCenterX), transform: 'translate(-50%, -50%)', background: 'var(--bg-canvas)', border: '1px solid var(--border-strong)', padding: '16px', borderRadius: '8px', zIndex: 100, boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '200px' }}>
                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1rem', color: 'var(--text-primary)' }}>Select Route</h3>
                  <button className="secondary-btn" onClick={() => { setPreviewRoutes(p => ({ ...p, [activeRouteSelect]: null })); setActiveRouteSelect(null); }}>None (Alley / Lot)</button>
                  {Object.values(store.routeClasses).map(rc => (
@@ -733,14 +736,8 @@ export function LotClassEditor({ id }: { id?: string }) {
   );
 };
 
-  const effectiveW = blockW + 2 * Math.max(
-    previewRoutes.left ? 50 : 20, 
-    previewRoutes.right ? 50 : 20
-  );
-  const effectiveD = blockD + 2 * Math.max(
-    previewRoutes.top ? 50 : 20, 
-    previewRoutes.bottom ? 50 : 20
-  );
+  const effectiveW = blockW + 2 * Math.max(leftRouteW, rightRouteW);
+  const effectiveD = blockD + 2 * Math.max(topRouteW, bottomRouteW);
   
   return (
     <DrillDownLayout 
@@ -752,8 +749,8 @@ export function LotClassEditor({ id }: { id?: string }) {
           initialBounds={{
             w: effectiveW,
             h: effectiveD,
-            centerX: effectiveW / 2,
-            centerY: effectiveD / 2,
+            centerX: ext + leftRouteW + blockW / 2,
+            centerY: ext + topRouteW + blockD / 2,
             marginPct: 0.75 // 25% margin total
           }}
         >
