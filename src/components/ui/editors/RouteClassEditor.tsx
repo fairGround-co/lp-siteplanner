@@ -206,15 +206,25 @@ export function RouteClassEditor({ id }: { id?: string }) {
             </div>
             
             {route.crossSection.elements.map((el, i) => {
+              const warnings: React.ReactNode[] = [];
               if (el.type === 'parking_lane') {
                 const hasPrevDrive = route.crossSection.elements[i - 1]?.type === 'drive_lane';
                 const hasNextDrive = route.crossSection.elements[i + 1]?.type === 'drive_lane';
                 const adjacentDrives = (hasPrevDrive ? 1 : 0) + (hasNextDrive ? 1 : 0);
                 if (adjacentDrives !== 1) {
-                  return <span key={i} style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 'bold' }}>ERROR: Parking lane must have EXACTLY ONE adjacent drive lane</span>;
+                  warnings.push(<span key={`${i}-err`} style={{ color: 'var(--color-danger)', fontSize: '0.75rem', fontWeight: 'bold' }}>ERROR: Parking lane must have EXACTLY ONE adjacent drive lane</span>);
+                }
+                
+                const nextEl = route.crossSection.elements[i + 1];
+                if (nextEl?.type === 'parking_lane') {
+                  const angle1 = el.parkingAngle || 0;
+                  const angle2 = nextEl.parkingAngle || 0;
+                  if (angle1 > 0 && angle2 > 0) {
+                    warnings.push(<span key={`${i}-warn`} style={{ color: 'var(--color-warning)', fontSize: '0.75rem', fontWeight: 'bold' }}>WARNING: Adjacent angled parking lanes can be staggered in practice to reduce total ROW width.</span>);
+                  }
                 }
               }
-              return null;
+              return warnings;
             })}
          </div>
          
