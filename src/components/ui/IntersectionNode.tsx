@@ -254,6 +254,8 @@ export function RouteLeg({
               opacity: interactive && draggedIndex === i ? 0.5 : 1,
               transition: 'all 0.2s ease',
               backgroundColor: hasRadius ? getLaneColor('parking_lane') : 'transparent',
+              border: 'none',
+              boxSizing: 'border-box',
             }}
           >
             <div
