@@ -104,15 +104,14 @@ export function RouteLeg({
             if (isHorizontal) bBottom = curb;
             else bRight = curb;
           }
-          // Rule 3: Curb line between preempted parking grass and lawn strip
+          // Rule 3: Curb between preempted parking (grass) and non-preempted parking (leg-facing edge)
           if (isPreemptedParking) {
-            if (prevEl?.type === 'lawn_strip') {
-              if (isHorizontal) bTop = curb;
-              else bLeft = curb;
-            }
-            if (nextEl?.type === 'lawn_strip') {
-              if (isHorizontal) bBottom = curb;
-              else bRight = curb;
+            if (isHorizontal) {
+              if (position === 'left') bLeft = curb;
+              else if (position === 'right') bRight = curb;
+            } else {
+              if (position === 'top') bTop = curb;
+              else if (position === 'bottom') bBottom = curb;
             }
           }
         } else {
@@ -124,26 +123,27 @@ export function RouteLeg({
         }
 
         // Rule 1: Convex border-radius on preempted parking at drive lane corners (setback)
+        // The rounding faces the LEG (non-preempted parking), not the intersection
         // Rule 2: Nibble on active parking at setback junction (leg)
         let brTL = '0', brTR = '0', brBL = '0', brBR = '0';
         const nibbles: React.ReactNode[] = [];
 
         if (isPreemptedParking && effectiveSectionType === 'setback') {
-          // Rule 1: round the corner facing the intersection + adjacent to a drive lane
+          // Rule 1: round the corner facing the leg + adjacent to a drive lane
           const prevIsDrive = prevEl?.type === 'drive_lane';
           const nextIsDrive = nextEl?.type === 'drive_lane';
           if (isHorizontal) {
-            // horizontal route: prev=above, next=below, setbackEdge is left or right
-            if (prevIsDrive && setbackEdge === 'right') brTR = `${cosmeticR}px`;
-            if (prevIsDrive && setbackEdge === 'left') brTL = `${cosmeticR}px`;
-            if (nextIsDrive && setbackEdge === 'right') brBR = `${cosmeticR}px`;
-            if (nextIsDrive && setbackEdge === 'left') brBL = `${cosmeticR}px`;
+            // horizontal route: prev=above, next=below. Leg-facing edge: position='left'→left, 'right'→right
+            if (prevIsDrive && position === 'left') brTL = `${cosmeticR}px`;
+            if (prevIsDrive && position === 'right') brTR = `${cosmeticR}px`;
+            if (nextIsDrive && position === 'left') brBL = `${cosmeticR}px`;
+            if (nextIsDrive && position === 'right') brBR = `${cosmeticR}px`;
           } else {
-            // vertical route: prev=left, next=right, setbackEdge is top or bottom
-            if (prevIsDrive && setbackEdge === 'bottom') brBL = `${cosmeticR}px`;
-            if (prevIsDrive && setbackEdge === 'top') brTL = `${cosmeticR}px`;
-            if (nextIsDrive && setbackEdge === 'bottom') brBR = `${cosmeticR}px`;
-            if (nextIsDrive && setbackEdge === 'top') brTR = `${cosmeticR}px`;
+            // vertical route: prev=left, next=right. Leg-facing edge: position='top'→top, 'bottom'→bottom
+            if (prevIsDrive && position === 'top') brTL = `${cosmeticR}px`;
+            if (prevIsDrive && position === 'bottom') brBL = `${cosmeticR}px`;
+            if (nextIsDrive && position === 'top') brTR = `${cosmeticR}px`;
+            if (nextIsDrive && position === 'bottom') brBR = `${cosmeticR}px`;
           }
         }
 
@@ -168,7 +168,7 @@ export function RouteLeg({
               <div key={`nibble-${cssCorner}`} style={{
                 position: 'absolute', ...posStyle,
                 width: `${cosmeticR}px`, height: `${cosmeticR}px`,
-                background: `radial-gradient(circle at ${ox} ${oy}, transparent ${cosmeticR}px, ${grassColor} ${cosmeticR}px)`,
+                background: `radial-gradient(circle at ${ox} ${oy}, ${grassColor} ${cosmeticR}px, transparent ${cosmeticR}px)`,
                 pointerEvents: 'none', zIndex: 2,
               }} />
             );
@@ -307,15 +307,6 @@ export function IntersectionNode({
   const firstDriveIndexV = routeV.crossSection.elements.findIndex((el: any) => el.type === 'drive_lane');
   const lastDriveIndexV = [...routeV.crossSection.elements].findLastIndex((el: any) => el.type === 'drive_lane');
 
-  // Outer parking lanes are those outside the driving box (closer to sidewalk than to median)
-  const isOuterParkingV = (idx: number) => {
-    const el = routeV.crossSection.elements[idx];
-    return el?.type === 'parking_lane' && (idx < firstDriveIndexV || idx > lastDriveIndexV);
-  };
-  const isOuterParkingH = (idx: number) => {
-    const el = routeH.crossSection.elements[idx];
-    return el?.type === 'parking_lane' && (idx < firstDriveIndexH || idx > lastDriveIndexH);
-  };
 
   const getIntCellType = (v_i: number, h_i: number) => {
     const v_el = routeV.crossSection.elements[v_i];
@@ -324,12 +315,10 @@ export function IntersectionNode({
 
     const isInsideDrivingBox = v_i >= firstDriveIndexV && v_i <= lastDriveIndexV && h_i >= firstDriveIndexH && h_i <= lastDriveIndexH;
 
-    // Treat outer parking lanes as non-vehicular (daylighted to grass)
-    const vIsOuterParking = isOuterParkingV(v_i);
-    const hIsOuterParking = isOuterParkingH(h_i);
-    // Effective types: outer parking acts like lawn_strip
-    const vType = vIsOuterParking ? 'lawn_strip' : v_el.type;
-    const hType = hIsOuterParking ? 'lawn_strip' : h_el.type;
+    // In the intersection grid, outer parking renders as pavement (not grass).
+    // Grass daylighting for outer parking only happens in setback RouteLeg sections.
+    const vType = v_el.type;
+    const hType = h_el.type;
 
     const has = (t: string) => vType === t || hType === t;
     if (has('sidewalk')) {
@@ -413,6 +402,20 @@ export function IntersectionNode({
         }
       }
 
+      // Add a backing cell behind rounded lawn_strip to prevent grid background bleed
+      if (cellRadius) {
+        cells.push(
+          <div
+            key={`int-bg-${v_i}-${h_i}`}
+            style={{
+              gridRow: h_i + 3,
+              gridColumn: v_i + 3,
+              backgroundColor: getLaneColor('drive_lane'),
+              zIndex: 0,
+            }}
+          />
+        );
+      }
       cells.push(
         <div
           key={`int-${v_i}-${h_i}`}
@@ -423,7 +426,7 @@ export function IntersectionNode({
             backgroundImage: bgImage,
             borderTop: bTop, borderBottom: bBottom, borderLeft: bLeft, borderRight: bRight,
             boxSizing: 'border-box',
-            ...(cellRadius ? { borderRadius: cellRadius } : {}),
+            ...(cellRadius ? { borderRadius: cellRadius, position: 'relative' as const, zIndex: 1 } : {}),
           }}
         />
       );
@@ -479,18 +482,19 @@ export function IntersectionNode({
     );
   };
 
-  if (firstDriveIndexH > 0 && firstDriveIndexV > 0) {
-    cells.push(renderApron('apron-nw', 3 + firstDriveIndexH - 1, 3 + firstDriveIndexV - 1, 'bottom-right'));
-  }
-  if (firstDriveIndexH > 0 && lastDriveIndexV < N_V - 1) {
-    cells.push(renderApron('apron-ne', 3 + firstDriveIndexH - 1, 3 + lastDriveIndexV + 1, 'bottom-left'));
-  }
-  if (lastDriveIndexH < N_H - 1 && firstDriveIndexV > 0) {
-    cells.push(renderApron('apron-sw', 3 + lastDriveIndexH + 1, 3 + firstDriveIndexV - 1, 'top-right'));
-  }
-  if (lastDriveIndexH < N_H - 1 && lastDriveIndexV < N_V - 1) {
-    cells.push(renderApron('apron-se', 3 + lastDriveIndexH + 1, 3 + lastDriveIndexV + 1, 'top-left'));
-  }
+  // Render aprons at the four corners of the driving box.
+  // Each apron sits on the non-drive cell just outside the driving box corner.
+  // For routes where drive lanes start at index 0 or end at the last index,
+  // the apron is placed on the setback column/row instead (gridRow/Col 2 or N+3).
+  const apronRowTop = firstDriveIndexH > 0 ? 3 + firstDriveIndexH - 1 : 2;
+  const apronRowBot = lastDriveIndexH < N_H - 1 ? 3 + lastDriveIndexH + 1 : N_H + 3;
+  const apronColLeft = firstDriveIndexV > 0 ? 3 + firstDriveIndexV - 1 : 2;
+  const apronColRight = lastDriveIndexV < N_V - 1 ? 3 + lastDriveIndexV + 1 : N_V + 3;
+
+  cells.push(renderApron('apron-nw', apronRowTop, apronColLeft, 'bottom-right'));
+  cells.push(renderApron('apron-ne', apronRowTop, apronColRight, 'bottom-left'));
+  cells.push(renderApron('apron-sw', apronRowBot, apronColLeft, 'top-right'));
+  cells.push(renderApron('apron-se', apronRowBot, apronColRight, 'top-left'));
 
   const setbackDist = config.intersectionDaylightDistance ?? 25;
   const gridCols = `1fr ${px(setbackDist)}px ${routeV.crossSection.elements.map((el: any) => `${px(el.targetWidth)}px`).join(' ')} ${px(setbackDist)}px 1fr`;
