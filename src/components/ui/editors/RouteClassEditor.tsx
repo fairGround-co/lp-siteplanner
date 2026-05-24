@@ -186,13 +186,11 @@ export function RouteClassEditor({ id }: { id?: string }) {
     let anchorX = 0;
     let anchorY = 0;
     if (containerSize.w > 0 && containerSize.h > 0) {
-      const idealX = containerSize.w / 2 + w_px / 2;
+      const idealX = containerSize.w / 2 - w_px / 2;
       const idealY = containerSize.h / 2 - w_px / 2;
-      // Snap to grid
-      const snappedX = Math.round(idealX / pxPerGrid) * pxPerGrid;
-      const snappedY = Math.round(idealY / pxPerGrid) * pxPerGrid;
-      anchorX = Math.max(0, snappedX - w_px);
-      anchorY = Math.max(0, snappedY);
+      // Snap TOP-LEFT corner to grid
+      anchorX = Math.round(idealX / pxPerGrid) * pxPerGrid;
+      anchorY = Math.round(idealY / pxPerGrid) * pxPerGrid;
     }
 
     return (
