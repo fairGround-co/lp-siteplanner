@@ -142,7 +142,26 @@ export function LotClassEditor({ id }: { id?: string }) {
       if (!routeId) return 20; // default alley/path width
       const rc = store.routeClasses[routeId];
       if (!rc) return 20;
-      return rc.crossSection.elements.reduce((acc, el) => acc + el.targetWidth, 0);
+      let w = 0;
+      const elements = rc.crossSection.elements;
+      for (let i = 0; i < elements.length; i++) {
+        w += elements[i].targetWidth;
+      }
+      for (let i = 0; i < elements.length - 1; i++) {
+        const el = elements[i];
+        const nextEl = elements[i + 1];
+        if (el.type === 'parking_lane' && nextEl.type === 'parking_lane') {
+          const angle1 = el.parkingAngle || 0;
+          const angle2 = nextEl.parkingAngle || 0;
+          if (angle1 > 0 && angle1 < 90 && angle1 === angle2) {
+            const rad = angle1 * Math.PI / 180;
+            const stallWidth = store.config.parkingStallWidth || 9;
+            const overlapPx = stallWidth * Math.cos(rad);
+            w -= overlapPx;
+          }
+        }
+      }
+      return w;
     };
 
     const topRouteW = getRouteWidth(previewRoutes.top);

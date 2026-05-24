@@ -650,7 +650,7 @@ export function IntersectionNode({
   const gridRows = `${topArm} ${px(setbackDist)}px ${getTrackSizes(routeH.crossSection.elements)} ${px(setbackDist)}px ${bottomArm}`;
 
   return (
-    <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows, filter: 'drop-shadow(0 0 40px rgba(0,0,0,0.5))' }}>
+    <div style={{ display: 'grid', width: '100%', height: '100%', gridTemplateColumns: gridCols, gridTemplateRows: gridRows }}>
       <div style={{ gridRow: 1, gridColumn: `3 / span ${N_V}`, zIndex: 10 }}>
         <RouteLeg route={routeV} oppRoute={routeH} isHorizontal={false} position="top" config={config} pxPerFt={pxPerFt} hideLabels={hideLabels} {...interactionProps} />
       </div>
