@@ -17,3 +17,15 @@ checklist, and guidance for design agents/skills:
 **`fairground-co/design-system` → `docs/consuming.md`.**
 Visual catalog: https://fairground-co.github.io/lp-theme/ or
 `node_modules/@fairground-co/core/dist/lookbook.html`.
+
+## Concurrency (added Jul 17 2026, canonical: ops PROJECT_BRIEF Appendix A)
+
+- **Verify HEAD before every commit/push** (`git branch --show-current`): a
+  finished sub-agent or a concurrent session may have switched branches under
+  you. If HEAD isn't your branch, re-checkout yours before acting.
+- **Sub-agents that commit get their own worktree.** A background/child agent
+  you spawn shares YOUR working tree unless isolated; if it commits, it leaves
+  HEAD on its branch. Isolate it (`git worktree`), or re-verify your branch the
+  moment it finishes.
+- **Planning/design-only agents make no git writes** — no commit, checkout, or
+  branch. Deliverables are docs; a code-owning agent (or the human) lands them.
